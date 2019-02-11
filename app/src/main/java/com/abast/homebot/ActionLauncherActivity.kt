@@ -10,14 +10,8 @@ import android.provider.Settings
 import android.util.Log
 import android.widget.Toast
 import androidx.core.content.ContextCompat
-import com.abast.homebot.HomeBotPreferenceFragment.Companion.KEY_APP_LAUNCH_TYPE
-import com.abast.homebot.HomeBotPreferenceFragment.Companion.KEY_APP_LAUNCH_VALUE
-import com.abast.homebot.HomeBotPreferenceFragment.Companion.SWITCH_KEY_APP
-import com.abast.homebot.HomeBotPreferenceFragment.Companion.SWITCH_KEY_BRIGHTNESS
-import com.abast.homebot.HomeBotPreferenceFragment.Companion.SWITCH_KEY_FLASHLIGHT
-import com.abast.homebot.HomeBotPreferenceFragment.Companion.SWITCH_KEY_RECENTS
-import com.abast.homebot.HomeBotPreferenceFragment.Companion.SWITCH_KEY_SHORTCUT
-import com.abast.homebot.HomeBotPreferenceFragment.Companion.SWITCH_KEY_WEB
+import com.abast.homebot.actions.HomeAction
+import kotlinx.android.synthetic.main.activity_launcher.*
 import java.net.URISyntaxException
 
 class ActionLauncherActivity : AppCompatActivity() {
@@ -25,18 +19,27 @@ class ActionLauncherActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+        setContentView(R.layout.activity_launcher)
         val sharedPrefs = PreferenceManager.getDefaultSharedPreferences(this)
-        val launchType = sharedPrefs.getString(KEY_APP_LAUNCH_TYPE, null)
-        val launchValue = sharedPrefs.getString(KEY_APP_LAUNCH_VALUE, null)
+        //val launchType = sharedPrefs.getString(KEY_APP_LAUNCH_TYPE, null)
+        //val launchValue = sharedPrefs.getString(KEY_APP_LAUNCH_VALUE, null)
 
-        when(launchType){
-            SWITCH_KEY_FLASHLIGHT -> toggleFlashlight()
-            SWITCH_KEY_BRIGHTNESS -> toggleBrightness()
-            SWITCH_KEY_RECENTS -> openRecents()
-            SWITCH_KEY_WEB -> openWebAddress(launchValue)
-            SWITCH_KEY_SHORTCUT, SWITCH_KEY_APP -> launchUri(launchValue)
+        val firstAction = HomeAction.values().filter { it.isSet(sharedPrefs) }
+            .map { Pair(it, it.values(sharedPrefs).first()) }.firstOrNull()
+
+        when(firstAction?.first){
+            HomeAction.TOGGLE_FLASHLIGHT -> toggleFlashlight()
+            HomeAction.TOGGLE_BRIGHTNESS -> toggleBrightness()
+            HomeAction.OPEN_RECENT_APPS -> openRecents()
+            HomeAction.OPEN_WEB -> openWebAddress(firstAction.second)
+            HomeAction.LAUNCH_SHORTCUT, HomeAction.LAUNCH_APP -> launchUri(firstAction.second)
             else -> launchMainActivity()
         }
+
+        launcher_background.setOnClickListener {
+            finish()
+        }
+
     }
 
     /**
@@ -67,9 +70,9 @@ class ActionLauncherActivity : AppCompatActivity() {
     /**
      * Toggles flashlight via a Service
      */
-    private fun toggleFlashlight(){
-        val flashlightIntent = Intent(this,FlashlightService::class.java)
-        ContextCompat.startForegroundService(this,flashlightIntent)
+    private fun toggleFlashlight() {
+        val flashlightIntent = Intent(this, FlashlightService::class.java)
+        ContextCompat.startForegroundService(this, flashlightIntent)
         finish()
     }
 
@@ -118,7 +121,7 @@ class ActionLauncherActivity : AppCompatActivity() {
                 finish()
             } catch (e: Settings.SettingNotFoundException) {
                 Log.e("Error", getString(R.string.error_brightness))
-                Toast.makeText(this,R.string.error_brightness,Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, R.string.error_brightness, Toast.LENGTH_SHORT).show()
                 e.printStackTrace()
                 launchMainActivity()
             }
@@ -131,14 +134,14 @@ class ActionLauncherActivity : AppCompatActivity() {
      * Opens web browser pointing to given url
      */
     private fun openWebAddress(url: String?) {
-        if(url != null){
+        if (url != null) {
             var finalUrl = url
             if (!finalUrl.startsWith("http://") && !finalUrl.startsWith("https://"))
                 finalUrl = "http://$url"
             val browserIntent = Intent(Intent.ACTION_VIEW, Uri.parse(finalUrl))
             startActivity(browserIntent)
             finish()
-        }else{
+        } else {
             launchMainActivity()
         }
     }

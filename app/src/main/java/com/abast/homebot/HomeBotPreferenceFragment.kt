@@ -1,122 +1,158 @@
 package com.abast.homebot
 
-import android.app.Activity.RESULT_OK
+import android.app.Activity.*
 import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
 import android.content.pm.ActivityInfo
-import android.os.Bundle
-import androidx.preference.*
-import com.abast.homebot.pickers.AppPickerActivity
 import android.net.Uri
 import android.os.Build
+import android.os.Bundle
 import android.provider.Settings
+import android.util.Log
 import android.widget.EditText
 import androidx.appcompat.app.AlertDialog
-import com.abast.homebot.pickers.AppPickerActivity.Companion.EXTRA_PICKED_CONTENT
-import com.abast.homebot.pickers.AppPickerActivity.Companion.REQUEST_CODE_APP
-import com.abast.homebot.pickers.AppPickerActivity.Companion.REQUEST_CODE_SHORTCUT
+import androidx.preference.*
+import com.abast.homebot.actions.HomeAction
+import com.abast.homebot.pickers.AppPickerActivity
 
 class HomeBotPreferenceFragment : PreferenceFragmentCompat() {
-
     companion object {
-        const val KEY_APP_LAUNCH_TYPE = "launch_type"
-        const val KEY_APP_LAUNCH_VALUE = "launch_value"
-        const val KEY_APP_ACTIVE_SUMMARY = "summary"
-
-        const val SWITCH_KEY_APP = "action_app"
-        const val SWITCH_KEY_SHORTCUT = "action_shortcut"
-        const val SWITCH_KEY_WEB = "action_web"
-        const val SWITCH_KEY_FLASHLIGHT = "action_flashlight"
-        const val SWITCH_KEY_RECENTS = "action_recents"
-        const val SWITCH_KEY_BRIGHTNESS = "action_brightness"
+        const val VALUE_EXTRA_KEY = "pref_value"
     }
 
-    private lateinit var sharedPreferences : SharedPreferences
-    private var switches : HashMap<String, SwitchPreference> = HashMap()
+    private val sharedPreferences: SharedPreferences by lazy {
+        PreferenceManager.getDefaultSharedPreferences(context)
+    }
+    private val switches: HashMap<SwitchPreference, HomeAction> = HashMap()
+    private val categories: HashMap<HomeAction, PreferenceCategory> = HashMap()
 
-    private lateinit var appPickerIntent : Intent
-    private lateinit var shortcutPickerIntent : Intent
+    private lateinit var appPickerIntent: Intent
+    private lateinit var shortcutPickerIntent: Intent
 
     override fun onAttach(context: Context) {
         super.onAttach(context)
-        sharedPreferences = PreferenceManager.getDefaultSharedPreferences(context)
-
         // Make intents for App and shortcut picker activities
-        appPickerIntent = Intent(context,AppPickerActivity::class.java)
-        appPickerIntent.putExtra(AppPickerActivity.EXTRA_LABEL,getString(R.string.choose_app))
-        appPickerIntent.putExtra(AppPickerActivity.EXTRA_PICK_TYPE,AppPickerActivity.PICK_TYPE_APP)
+        appPickerIntent = Intent(context, AppPickerActivity::class.java)
+        appPickerIntent.putExtra(AppPickerActivity.EXTRA_LABEL, getString(R.string.choose_app))
+        appPickerIntent.putExtra(AppPickerActivity.EXTRA_PICK_TYPE, AppPickerActivity.PICK_TYPE_APP)
 
-        shortcutPickerIntent = Intent(context,AppPickerActivity::class.java)
-        shortcutPickerIntent.putExtra(AppPickerActivity.EXTRA_LABEL,getString(R.string.choose_shortcut))
-        shortcutPickerIntent.putExtra(AppPickerActivity.EXTRA_PICK_TYPE,AppPickerActivity.PICK_TYPE_SHORTCUT)
+        shortcutPickerIntent = Intent(context, AppPickerActivity::class.java)
+        shortcutPickerIntent.putExtra(AppPickerActivity.EXTRA_LABEL, getString(R.string.choose_shortcut))
+        shortcutPickerIntent.putExtra(AppPickerActivity.EXTRA_PICK_TYPE, AppPickerActivity.PICK_TYPE_SHORTCUT)
     }
 
     override fun onCreatePreferences(savedInstanceState: Bundle?, rootKey: String?) {
         addPreferencesFromResource(R.xml.pref_general)
-        val prefCategory = preferenceScreen.getPreference(0) as PreferenceGroup
-        val sharedPreferences = PreferenceManager.getDefaultSharedPreferences(activity)
-        // Store all switches in HashMap
-        for (i in 0 until prefCategory.preferenceCount) {
-            val pref = prefCategory.getPreference(i);
-            switches[pref.key] = pref as SwitchPreference
+        val shared = sharedPreferences
+        Log.d("HomeBot", "shared is $shared")
+        val (repeatables, nonRepeatables) = HomeAction.values().partition { it.repeatable }
+        repeatables.forEach {
+            val category = PreferenceCategory(context)
+            preferenceScreen.addPreference(category)
+            categories[it] = category
+            category.addPreference(SwitchPreference(context).apply {
+                setTitle(it.titleRes)
+                key = it.switchKey()
+                isChecked = false
+                summary = ""
+                switches[this] = it
+            })
+            it.values(shared).zip(it.summaries(shared)).forEach { (value, summary) ->
+                category.addPreference(SwitchPreference(context).apply {
+                    title = summary
+                    key = it.switchKey() + value
+                    isChecked = true
+                    extras.putString(VALUE_EXTRA_KEY, value)
+                    switches[this] = it
+                })
+            }
         }
-        // Read saved data
-        val currentSwitch = sharedPreferences.getString(KEY_APP_LAUNCH_TYPE, "")
-        val summary = sharedPreferences.getString(KEY_APP_ACTIVE_SUMMARY,"")
-        switches[currentSwitch!!]?.summary = summary
+        val nonRepeatableCategory = PreferenceCategory(context)
+        preferenceScreen.addPreference(nonRepeatableCategory)
+        nonRepeatables.forEach {
+            nonRepeatableCategory.addPreference(SwitchPreference(context).apply {
+                setTitle(it.titleRes)
+                key = it.switchKey()
+                isChecked = it.isSet(shared)
+                summary = it.summaries(shared).joinToString(",")
+                switches[this] = it
+            })
+        }
     }
 
     override fun onPreferenceTreeClick(preference: Preference?): Boolean {
-        val sharedPreferences = PreferenceManager.getDefaultSharedPreferences(activity)
-        val editor = sharedPreferences.edit()
         val switch = preference as SwitchPreference
-        uncheckAllSwitchesBut(switch.key)
-        if(switch.isChecked){
-            editor.putString(KEY_APP_LAUNCH_TYPE,switch.key)
-            editor.remove(KEY_APP_ACTIVE_SUMMARY)
-            editor.apply()
-            when(switch.key){
-                SWITCH_KEY_APP -> startActivityForResult(appPickerIntent,AppPickerActivity.REQUEST_CODE_APP)
-                SWITCH_KEY_SHORTCUT -> startActivityForResult(shortcutPickerIntent,AppPickerActivity.REQUEST_CODE_SHORTCUT)
-                SWITCH_KEY_BRIGHTNESS -> askForBrightnessPermission()
-                SWITCH_KEY_WEB -> showWebDialog(){ setLaunchUrl(it) }
+        if (switch.isChecked) {
+            val action: HomeAction? = switches[switch]
+            when (action) {
+                HomeAction.LAUNCH_APP -> {
+                    switch.isChecked = false
+                    startActivityForResult(appPickerIntent, AppPickerActivity.REQUEST_CODE_APP)
+                }
+                HomeAction.LAUNCH_SHORTCUT -> {
+                    switch.isChecked = false
+                    startActivityForResult(
+                        shortcutPickerIntent,
+                        AppPickerActivity.REQUEST_CODE_SHORTCUT
+                    )
+                }
+                HomeAction.TOGGLE_BRIGHTNESS -> {
+                    askForBrightnessPermission()
+                }
+                HomeAction.OPEN_WEB -> showWebDialog { setLaunchUrl(it) }
+                null -> Unit
+                else -> action.addValue("true", "", sharedPreferences)
             }
-        }else{
-            editor.remove(KEY_APP_LAUNCH_TYPE)
-            editor.remove(KEY_APP_LAUNCH_VALUE)
-            editor.remove(KEY_APP_ACTIVE_SUMMARY)
-            editor.apply()
-            switches[switch.key]?.summary = null
+        } else {
+            switches[switch]!!.removeValue(
+                switch.extras.getString(VALUE_EXTRA_KEY) ?: "",
+                switch.summary?.toString() ?: "",
+                sharedPreferences
+            )
+            if (switches[switch]!!.repeatable) {
+                categories[switches[switch]!!]!!.removePreference(switch)
+            } else {
+                switch.summary = null
+            }
         }
         return super.onPreferenceTreeClick(preference)
     }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
-        if(resultCode == RESULT_OK){
-            val sharedPreferences : SharedPreferences = PreferenceManager.getDefaultSharedPreferences(activity)
-            when(requestCode){
-                REQUEST_CODE_APP -> {
-                    val appData = data?.extras?.getParcelable<ActivityInfo>(EXTRA_PICKED_CONTENT)
-                    if(appData != null){
+        if (resultCode == RESULT_OK) {
+            when (requestCode) {
+                AppPickerActivity.REQUEST_CODE_APP -> {
+                    data?.extras?.getParcelable<ActivityInfo>(AppPickerActivity.EXTRA_PICKED_CONTENT)?.let { appData ->
                         val label = appData.loadLabel(activity?.packageManager!!).toString()
-                        switches[SWITCH_KEY_APP]?.summary = label
                         val activityIntent = Intent()
                         activityIntent.setClassName(appData.packageName, appData.name)
-                        saveSettings(launchValue = activityIntent.toUri(Intent.URI_INTENT_SCHEME),summary = label)
+                        val value = activityIntent.toUri(Intent.URI_INTENT_SCHEME)
+                        categories[HomeAction.LAUNCH_APP]!!.addPreference(SwitchPreference(context).apply {
+                            title = label
+                            key = HomeAction.LAUNCH_APP.switchKey() + value
+                            isChecked = true
+                            extras.putString(VALUE_EXTRA_KEY, value)
+                            switches[this] = HomeAction.LAUNCH_APP
+                        })
+                        HomeAction.LAUNCH_APP.addValue(value, label, sharedPreferences)
                     }
                 }
-                REQUEST_CODE_SHORTCUT -> {
-                    val shortcutIntent = data?.extras?.getParcelable<Intent>(Intent.EXTRA_SHORTCUT_INTENT)
-                    val shortcutName = data?.extras?.getString(Intent.EXTRA_SHORTCUT_NAME)
-                    switches[SWITCH_KEY_SHORTCUT]?.summary = shortcutName
-                    saveSettings(launchValue = shortcutIntent?.toUri(Intent.URI_INTENT_SCHEME),summary = shortcutName)
+                AppPickerActivity.REQUEST_CODE_SHORTCUT -> {
+                    val shortcutIntent = data?.extras?.getParcelable<Intent>(Intent.EXTRA_SHORTCUT_INTENT)!!
+                    val shortcutName = data.extras?.getString(Intent.EXTRA_SHORTCUT_NAME)!!
+                    val value = shortcutIntent.toUri(Intent.URI_INTENT_SCHEME)
+                    categories[HomeAction.LAUNCH_SHORTCUT]!!.addPreference(SwitchPreference(context).apply {
+                        title = shortcutName
+                        key = HomeAction.LAUNCH_SHORTCUT.switchKey() + value
+                        isChecked = true
+                        extras.putString(VALUE_EXTRA_KEY, value)
+                        switches[this] = HomeAction.LAUNCH_SHORTCUT
+                    })
+                    HomeAction.LAUNCH_SHORTCUT.addValue(value, shortcutName, sharedPreferences)
                 }
             }
-        }else{
-            // Sets all switches to off
-            switches.map{ it.value.isChecked = false }
         }
     }
 
@@ -124,11 +160,14 @@ class HomeBotPreferenceFragment : PreferenceFragmentCompat() {
         super.onResume()
 
         // Check if we have brightness permission
-        val brightnessSwitch = switches[SWITCH_KEY_BRIGHTNESS]
-        if (!Settings.System.canWrite(activity) && brightnessSwitch?.isChecked == true) {
+        val brightnessSwitch = findSwitch(HomeAction.TOGGLE_BRIGHTNESS)
+        if (!Settings.System.canWrite(activity) && brightnessSwitch.isChecked) {
             brightnessSwitch.isChecked = false
         }
     }
+
+    private fun findSwitch(action: HomeAction): SwitchPreference =
+        switches.entries.find { it.value == action }!!.key
 
     // ============== Utils ============== //
 
@@ -149,19 +188,19 @@ class HomeBotPreferenceFragment : PreferenceFragmentCompat() {
     /**
      * Shows dialog with EditText to enter a url
      */
-    private fun showWebDialog(onInput : (String) -> Unit) {
-        context?.let{
+    private fun showWebDialog(onInput: (String) -> Unit) {
+        context?.let {
             val et = EditText(it)
             et.hint = getString(R.string.web_hint)
             val builder = AlertDialog.Builder(it)
             builder.setTitle(R.string.enter_url)
             builder.setView(et)
-            builder.setPositiveButton(R.string.ok){dialog, _ ->
+            builder.setPositiveButton(R.string.ok) { dialog, _ ->
                 onInput.invoke(et.text.toString())
                 dialog.dismiss()
             }
-            builder.setNegativeButton(R.string.cancel){dialog,_ ->
-                switches[SWITCH_KEY_WEB]?.isChecked = false
+            builder.setNegativeButton(R.string.cancel) { dialog, _ ->
+                findSwitch(HomeAction.OPEN_WEB).isChecked = false
                 dialog.cancel()
             }
             val dialog: AlertDialog = builder.create()
@@ -170,34 +209,17 @@ class HomeBotPreferenceFragment : PreferenceFragmentCompat() {
     }
 
     /**
-     *  Toggles all switches off except the one with the provided key
-     */
-    private fun uncheckAllSwitchesBut(key: String) {
-        for (entry in switches.entries) {
-            if (entry.key != key) {
-                val pref = entry.value
-                pref.isChecked = false
-                pref.summary = ""
-            }
-        }
-    }
-
-    /**
      * Sets the web url to launch
      */
-    private fun setLaunchUrl(it: String) {
-        switches[SWITCH_KEY_WEB]?.summary = it
-        saveSettings(it,it)
-    }
-
-    /**
-     * Utility function to save launch settings to SharedPreferences
-     */
-    private fun saveSettings(launchValue : String?, summary : String?){
-        val editor = sharedPreferences.edit()
-        editor.putString(KEY_APP_LAUNCH_VALUE, launchValue)
-        editor.putString(KEY_APP_ACTIVE_SUMMARY, summary)
-        editor.apply()
+    private fun setLaunchUrl(url: String) {
+        categories[HomeAction.OPEN_WEB]!!.addPreference(SwitchPreference(context).apply {
+            title = url
+            key = HomeAction.OPEN_WEB.switchKey() + url
+            isChecked = true
+            extras.putString(VALUE_EXTRA_KEY, url)
+            switches[this] = HomeAction.OPEN_WEB
+        })
+        HomeAction.OPEN_WEB.addValue(url, url, sharedPreferences)
     }
 
 }
