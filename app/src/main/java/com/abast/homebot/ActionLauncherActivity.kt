@@ -25,7 +25,7 @@ class ActionLauncherActivity : AppCompatActivity() {
         //val launchValue = sharedPrefs.getString(KEY_APP_LAUNCH_VALUE, null)
 
         val firstAction = HomeAction.values().filter { it.isSet(sharedPrefs) }
-            .map { Pair(it, it.values(sharedPrefs).first()) }.firstOrNull()
+            .map { Pair(it, it.content(sharedPrefs).first().first) }.firstOrNull()
 
         when(firstAction?.first){
             HomeAction.TOGGLE_FLASHLIGHT -> toggleFlashlight()

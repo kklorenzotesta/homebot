@@ -58,7 +58,7 @@ class HomeBotPreferenceFragment : PreferenceFragmentCompat() {
                 summary = ""
                 switches[this] = it
             })
-            it.values(shared).zip(it.summaries(shared)).forEach { (value, summary) ->
+            it.content(shared).forEach { (value, summary) ->
                 category.addPreference(SwitchPreference(context).apply {
                     title = summary
                     key = it.switchKey() + value
@@ -75,7 +75,7 @@ class HomeBotPreferenceFragment : PreferenceFragmentCompat() {
                 setTitle(it.titleRes)
                 key = it.switchKey()
                 isChecked = it.isSet(shared)
-                summary = it.summaries(shared).joinToString(",")
+                summary = it.content(shared).firstOrNull()?.second ?: ""
                 switches[this] = it
             })
         }
@@ -100,14 +100,16 @@ class HomeBotPreferenceFragment : PreferenceFragmentCompat() {
                 HomeAction.TOGGLE_BRIGHTNESS -> {
                     askForBrightnessPermission()
                 }
-                HomeAction.OPEN_WEB -> showWebDialog { setLaunchUrl(it) }
+                HomeAction.OPEN_WEB -> {
+                    switch.isChecked = false
+                    showWebDialog { setLaunchUrl(it) }
+                }
                 null -> Unit
                 else -> action.addValue("true", "", sharedPreferences)
             }
         } else {
             switches[switch]!!.removeValue(
                 switch.extras.getString(VALUE_EXTRA_KEY) ?: "",
-                switch.summary?.toString() ?: "",
                 sharedPreferences
             )
             if (switches[switch]!!.repeatable) {

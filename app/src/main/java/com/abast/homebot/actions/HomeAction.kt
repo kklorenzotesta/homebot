@@ -16,20 +16,21 @@ enum class HomeAction(@StringRes val titleRes: Int, val repeatable: Boolean = fa
 
     private fun key(): String = switchKey() + "_key"
 
-    private fun summaryKey(): String = key() + "_summary"
+    private fun summaryKey(value: String): String = key() + "_" + value + "_summary"
 
-    fun values(sharedPreferences: SharedPreferences): Set<String> =
+    fun content(sharedPreferences: SharedPreferences): List<Pair<String, String>> =
+        values(sharedPreferences).map {
+            Pair(
+                it,
+                sharedPreferences.getString(summaryKey(it), null) ?: ""
+            )
+        }
+
+    private fun values(sharedPreferences: SharedPreferences): Set<String> =
         if (repeatable) {
             sharedPreferences.getStringSet(key(), null) ?: emptySet()
         } else {
             sharedPreferences.getString(key(), null)?.let { setOf(it) } ?: emptySet()
-        }
-
-    fun summaries(sharedPreferences: SharedPreferences): Set<String> =
-        if (repeatable) {
-            (sharedPreferences.getStringSet(summaryKey(), null) ?: emptySet())
-        } else {
-            sharedPreferences.getString(summaryKey(), null)?.let { setOf(it) } ?: emptySet()
         }
 
     fun addValue(value: String, summary: String, sharedPreferences: SharedPreferences) {
@@ -39,31 +40,25 @@ enum class HomeAction(@StringRes val titleRes: Int, val repeatable: Boolean = fa
                     key(),
                     (sharedPreferences.getStringSet(key(), null) ?: emptySet()) + value
                 )
-                .putStringSet(
-                    summaryKey(),
-                    (sharedPreferences.getStringSet(summaryKey(), null) ?: emptySet()) + summary
-                )
+                .putString(summaryKey(value), summary)
                 .apply()
         } else {
             sharedPreferences.edit().putString(key(), value)
-                .putString(summaryKey(), summary).apply()
+                .putString(summaryKey(value), summary).apply()
         }
     }
 
-    fun removeValue(value: String, summary: String, sharedPreferences: SharedPreferences) {
+    fun removeValue(value: String, sharedPreferences: SharedPreferences) {
         if (repeatable) {
             sharedPreferences.edit()
                 .putStringSet(
                     key(),
                     (sharedPreferences.getStringSet(key(), null) ?: emptySet()) - value
                 )
-                .putStringSet(
-                    summaryKey(),
-                    (sharedPreferences.getStringSet(summaryKey(), null) ?: emptySet()) - summary
-                )
+                .remove(summaryKey(value))
                 .apply()
         } else {
-            sharedPreferences.edit().remove(key()).remove(summaryKey()).apply()
+            sharedPreferences.edit().remove(key()).remove(summaryKey(value)).apply()
         }
     }
 
