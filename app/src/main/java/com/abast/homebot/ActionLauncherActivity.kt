@@ -1,6 +1,7 @@
 package com.abast.homebot
 
 import android.content.Intent
+import android.content.SharedPreferences
 import android.net.Uri
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
@@ -15,31 +16,36 @@ import kotlinx.android.synthetic.main.activity_launcher.*
 import java.net.URISyntaxException
 
 class ActionLauncherActivity : AppCompatActivity() {
+    private val sharedPrefs: SharedPreferences by lazy {
+        PreferenceManager.getDefaultSharedPreferences(this)
+    }
+    private val actions: List<Pair<HomeAction, String>> by lazy {
+        HomeAction.values().filter { it.isSet(sharedPrefs) }
+            .flatMap { ac -> ac.content(sharedPrefs).map { Pair(ac, it.first) } }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
         setContentView(R.layout.activity_launcher)
-        val sharedPrefs = PreferenceManager.getDefaultSharedPreferences(this)
-        //val launchType = sharedPrefs.getString(KEY_APP_LAUNCH_TYPE, null)
-        //val launchValue = sharedPrefs.getString(KEY_APP_LAUNCH_VALUE, null)
-
-        val firstAction = HomeAction.values().filter { it.isSet(sharedPrefs) }
-            .map { Pair(it, it.content(sharedPrefs).first().first) }.firstOrNull()
-
-        when(firstAction?.first){
-            HomeAction.TOGGLE_FLASHLIGHT -> toggleFlashlight()
-            HomeAction.TOGGLE_BRIGHTNESS -> toggleBrightness()
-            HomeAction.OPEN_RECENT_APPS -> openRecents()
-            HomeAction.OPEN_WEB -> openWebAddress(firstAction.second)
-            HomeAction.LAUNCH_SHORTCUT, HomeAction.LAUNCH_APP -> launchUri(firstAction.second)
-            else -> launchMainActivity()
-        }
-
         launcher_background.setOnClickListener {
             finish()
         }
+        if (actions.size == 1) {
+            actions.first().apply {
+                handleAction(first, second)
+            }
+        }
+    }
 
+    private fun handleAction(action: HomeAction?, value: String) {
+        when (action) {
+            HomeAction.TOGGLE_FLASHLIGHT -> toggleFlashlight()
+            HomeAction.TOGGLE_BRIGHTNESS -> toggleBrightness()
+            HomeAction.OPEN_RECENT_APPS -> openRecents()
+            HomeAction.OPEN_WEB -> openWebAddress(value)
+            HomeAction.LAUNCH_SHORTCUT, HomeAction.LAUNCH_APP -> launchUri(value)
+            else -> launchMainActivity()
+        }
     }
 
     /**
