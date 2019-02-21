@@ -30,6 +30,9 @@ class ActionLauncherActivity : AppCompatActivity() {
         launcher_background.setOnClickListener {
             finish()
         }
+        launcher_background.setOnButtonClickListener {
+            finish()
+        }
         if (actions.size == 1) {
             actions.first().apply {
                 handleAction(first, second)
