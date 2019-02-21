@@ -29,7 +29,7 @@ class BottomCircleView(context: Context, attrs: AttributeSet? = null) : View(con
             mRectF = RectF(-w / 4F, (h - minH) - navBarH, w * 5F / 4F, (h + minH) - navBarH)
             bottomRect = RectF(0F, h - navBarH, w.toFloat(), h.toFloat())
         } else {
-            mRectF = RectF(-w / 3F, h - minH, w * 4F / 3F, h + minH)
+            mRectF = RectF(-w / 4F, h - minH, w * 5F / 4F, h + minH)
             bottomRect = RectF()
         }
     }
