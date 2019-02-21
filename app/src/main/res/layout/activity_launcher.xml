@@ -1,11 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-              android:orientation="vertical"
-              android:layout_width="match_parent"
-              android:layout_height="match_parent"
-              android:id="@+id/launcher_background"
-              android:background="@color/opaque"
-              android:backgroundTint="@color/opaque">
-    <com.abast.homebot.views.BottomCircleView android:layout_width="match_parent" android:layout_height="match_parent"/>
-
-</LinearLayout>
+<com.abast.homebot.views.LauncherLayout
+        xmlns:android="http://schemas.android.com/apk/res/android"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:id="@+id/launcher_background"
+        android:background="@color/opaque"
+        android:backgroundTint="@color/opaque"/>
