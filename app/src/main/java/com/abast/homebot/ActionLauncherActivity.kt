@@ -2,6 +2,7 @@ package com.abast.homebot
 
 import android.content.Intent
 import android.content.SharedPreferences
+import android.content.res.Configuration
 import android.net.Uri
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
@@ -38,6 +39,23 @@ class ActionLauncherActivity : AppCompatActivity() {
                 handleAction(first, second)
             }
         }
+    }
+
+    override fun onPause() {
+        super.onPause()
+        finish()
+    }
+
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        if (!hasFocus) {
+            finish()
+        }
+    }
+
+    override fun onConfigurationChanged(newConfig: Configuration) {
+        super.onConfigurationChanged(newConfig)
+        finish()
     }
 
     private fun handleAction(action: HomeAction?, value: String) {
@@ -96,7 +114,7 @@ class ActionLauncherActivity : AppCompatActivity() {
             val retbinder = getService.invoke(serviceManagerClass, "statusbar") as IBinder
             val statusBarClass = Class.forName(retbinder.interfaceDescriptor!!)
             val statusBarObject = statusBarClass.classes[0].getMethod("asInterface", IBinder::class.java)
-                .invoke(null, *arrayOf<Any>(retbinder))
+                .invoke(null, retbinder)
             val clearAll = statusBarClass.getMethod("toggleRecentApps")
             clearAll.isAccessible = true
             clearAll.invoke(statusBarObject)

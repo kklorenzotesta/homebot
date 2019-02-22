@@ -32,7 +32,7 @@ class LauncherLayout(context: Context, attrs: AttributeSet) : FrameLayout(contex
     init {
         addView(ellipse)
         addView(label)
-        (1..47).map { QuickActionButton(context) }.forEach { button ->
+        (1..7).map { QuickActionButton(context) }.forEach { button ->
             addView(button)
             button.setOnLongClickListener {
                 spreadButtonsAround(button)
