@@ -57,6 +57,9 @@
                 <action android:name="android.intent.action.ASSIST"/>
                 <category android:name="android.intent.category.DEFAULT"/>
             </intent-filter>
+            <meta-data
+                    android:name="com.android.systemui.action_assist_icon"
+                    android:resource="@drawable/ic_launcher_foreground_green"/>
         </activity>
 
         <activity

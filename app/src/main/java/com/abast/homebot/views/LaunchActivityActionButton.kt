@@ -31,8 +31,8 @@ class LaunchActivityActionButton @JvmOverloads constructor(
             if (uri != null) {
                 try {
                     val shortcut = Intent.parseUri(uri, 0)
-                    activity.startActivity(shortcut)
                     activity.finish()
+                    activity.startActivity(shortcut)
                 } catch (e: URISyntaxException) {
                     e.printStackTrace()
                     launchMainActivity()
