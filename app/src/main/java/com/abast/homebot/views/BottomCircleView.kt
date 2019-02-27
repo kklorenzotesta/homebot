@@ -49,15 +49,10 @@ class BottomCircleView(context: Context, attrs: AttributeSet? = null) : View(con
     }
 
     fun getPositiveY(x: Int): Int =
-            /*((mRectF.height() / 2.0) * sqrt(1 - (x / (mRectF.width() / 2.0).pow(2)))).roundToInt()*/
         (((mRectF.height() / 2.0) - (((mRectF.height() / 2.0) / (mRectF.width() / 2.0)) * sqrt(
             (mRectF.width() / 2.0).pow(2) - x.toDouble().pow(
                 2
             )
         ))) + mRectF.top).roundToInt()
-            .also {
-                Log.d("HB", "measured from $x -> $it")
-            }
-    // + mRectF.top.roundToInt()
     //b*sqrt(1-(x./a)^2)
 }

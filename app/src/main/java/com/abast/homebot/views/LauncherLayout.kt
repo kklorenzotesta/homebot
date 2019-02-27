@@ -2,10 +2,10 @@ package com.abast.homebot.views
 
 import android.animation.ObjectAnimator
 import android.content.Context
+import android.graphics.Color
 import android.graphics.Path
 import android.graphics.Typeface
 import android.util.AttributeSet
-import android.util.Log
 import android.util.TypedValue
 import android.view.MotionEvent
 import android.view.View
@@ -24,6 +24,7 @@ class LauncherLayout(context: Context, attrs: AttributeSet) : FrameLayout(contex
     private val label: TextView = TextView(context).apply {
         text = "Test text very long u know"
         textAlignment = TextView.TEXT_ALIGNMENT_CENTER
+        setTextColor(Color.WHITE)
         typeface = Typeface.DEFAULT_BOLD
         visibility = View.VISIBLE
     }
@@ -96,50 +97,55 @@ class LauncherLayout(context: Context, attrs: AttributeSet) : FrameLayout(contex
             labelStartX = (measuredWidth - elementsMargin) - label.measuredWidth
         }
         val labelStartY = (child.y - label.measuredHeight).roundToInt()
-        Log.d("HB", "label w: ${label.measuredWidth}, h: ${label.measuredHeight}")
         label.layout(labelStartX, labelStartY, labelStartX + label.measuredWidth, labelStartY + label.measuredHeight)
         val buttons = children.filter { it is QuickActionButton }.map { it as QuickActionButton }.toList()
         val index = buttons.indexOf(child)
+        val singleChildWidth = buttons.lastOrNull()?.measuredWidth ?: 0
         val spaceBefore = (child.x - elementsMargin).roundToInt()
         val spaceAfter = ((measuredWidth - (child.x + child.measuredWidth)) - elementsMargin).roundToInt()
-        var availableSpaceLeft = if (index > 0) (spaceBefore / index) else 0
-        var availableSpaceRight = if (((buttons.size - index) - 1) > 0) spaceAfter / ((buttons.size - index) - 1) else 0
-        val singleChildWidth = buttons.lastOrNull()?.measuredWidth ?: 0
-        if (singleChildWidth > availableSpaceLeft && index > 1) {
-            availableSpaceLeft = (spaceBefore - singleChildWidth) / (index - 1)
+        var availableSpaceLeftPerButton = if (index > 0) (spaceBefore / index) else 0
+        var availableSpaceRightPerButton =
+            if (((buttons.size - index) - 1) > 0) spaceAfter / ((buttons.size - index) - 1) else 0
+        if (singleChildWidth > availableSpaceLeftPerButton && index > 1 && spaceBefore > singleChildWidth) {
+            availableSpaceLeftPerButton = (spaceBefore - singleChildWidth) / (index - 1)
         }
-        if (singleChildWidth > availableSpaceRight && ((buttons.size - index) - 1) > 1) {
-            availableSpaceRight = (spaceAfter - singleChildWidth) / ((buttons.size - index) - 2)
+        if (singleChildWidth > availableSpaceRightPerButton && ((buttons.size - index) - 1) > 1 && spaceAfter > singleChildWidth) {
+            availableSpaceRightPerButton = (spaceAfter - singleChildWidth) / ((buttons.size - index) - 2)
         }
-        (0 until index).map { buttons[it] }
-            .fold(min(elementsMargin, (child.x - singleChildWidth).roundToInt())) { acc, view ->
+        (0 until index).reversed().map { buttons[it] }
+            .fold(child.x.roundToInt()) { acc, view ->
                 val startingX =
-                    acc + if (availableSpaceLeft > view.measuredWidth) (availableSpaceLeft - view.measuredWidth) / 2 else 0
-                val startingY =
-                    ellipse.getPositiveY(startingX + (view.measuredWidth / 2) - (measuredWidth / 2)) - (view.measuredHeight / 2)
-                ObjectAnimator.ofFloat(view, View.X, View.Y, Path().apply {
-                    moveTo(view.x, view.y)
-                    lineTo(startingX.toFloat(), startingY.toFloat())
-                }).apply {
-                    duration = 300
-                    start()
+                    (acc - if (availableSpaceLeftPerButton > view.measuredWidth) (availableSpaceLeftPerButton - view.measuredWidth) / 2 else 0) -
+                            view.measuredWidth
+                if (startingX < view.x) {
+                    val startingY =
+                        ellipse.getPositiveY(startingX + (view.measuredWidth / 2) - (measuredWidth / 2)) - (view.measuredHeight / 2)
+                    ObjectAnimator.ofFloat(view, View.X, View.Y, Path().apply {
+                        moveTo(view.x, view.y)
+                        lineTo(startingX.toFloat(), startingY.toFloat())
+                    }).apply {
+                        duration = 300
+                        start()
+                    }
                 }
-                acc + availableSpaceLeft
+                acc - availableSpaceLeftPerButton
             }
         ((index + 1) until buttons.size).map { buttons[it] }
             .fold((child.x + child.measuredWidth).roundToInt()) { acc, view ->
                 val startingX =
-                    acc + if (availableSpaceRight > view.measuredWidth) (availableSpaceRight - view.measuredWidth) / 2 else 0
-                val startingY =
-                    ellipse.getPositiveY(startingX + (view.measuredWidth / 2) - (measuredWidth / 2)) - (view.measuredHeight / 2)
-                ObjectAnimator.ofFloat(view, View.X, View.Y, Path().apply {
-                    moveTo(view.x, view.y)
-                    lineTo(startingX.toFloat(), startingY.toFloat())
-                }).apply {
-                    duration = 300
-                    start()
+                    acc + if (availableSpaceRightPerButton > view.measuredWidth) (availableSpaceRightPerButton - view.measuredWidth) / 2 else 0
+                if (startingX > view.x) {
+                    val startingY =
+                        ellipse.getPositiveY(startingX + (view.measuredWidth / 2) - (measuredWidth / 2)) - (view.measuredHeight / 2)
+                    ObjectAnimator.ofFloat(view, View.X, View.Y, Path().apply {
+                        moveTo(view.x, view.y)
+                        lineTo(startingX.toFloat(), startingY.toFloat())
+                    }).apply {
+                        duration = 300
+                        start()
+                    }
                 }
-                acc + availableSpaceRight
+                acc + availableSpaceRightPerButton
             }
     }
 
