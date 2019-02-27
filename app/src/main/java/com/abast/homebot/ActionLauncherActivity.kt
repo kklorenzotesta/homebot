@@ -88,7 +88,9 @@ class ActionLauncherActivity : AppCompatActivity() {
     private fun launchUri(uri: String?) {
         if (uri != null) {
             try {
-                val shortcut = Intent.parseUri(uri, 0)
+                val shortcut = Intent.parseUri(uri, 0).apply {
+                    flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                }
                 startActivity(shortcut)
                 finish()
             } catch (e: URISyntaxException) {
