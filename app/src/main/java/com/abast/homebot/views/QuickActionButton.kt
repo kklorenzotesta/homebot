@@ -1,26 +1,41 @@
 package com.abast.homebot.views
 
+import android.app.Activity
 import android.content.Context
+import android.content.Intent
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
 import android.util.AttributeSet
 import android.util.TypedValue
 import android.view.View
+import com.abast.homebot.MainActivity
 import kotlin.math.min
 import kotlin.math.roundToInt
 import kotlin.random.Random
 
-class QuickActionButton(context: Context, attrs: AttributeSet? = null) : View(context, attrs) {
+abstract class QuickActionButton : View {
+    constructor(context: Context)
+            : super(context)
+
+    constructor(context: Context, attrs: AttributeSet?)
+            : super(context, attrs)
+
+    constructor(context: Context, attrs: AttributeSet?, defStyleAttr: Int)
+            : super(context, attrs, defStyleAttr)
+
+    constructor(context: Context, attrs: AttributeSet?, defStyleAttr: Int, defStyleRes: Int)
+            : super(context, attrs, defStyleAttr, defStyleRes)
+
     private val shadowSizeDp: Int = 10
 
-    private var centerX: Float = 0F
-    private var centerY: Float = 0F
-    private var radius: Float = 0F
+    protected var centerX: Float = 0F
+    protected var centerY: Float = 0F
+    protected var radius: Float = 0F
 
     private val circlePaint: Paint = Random(Random.nextInt()).let { rnd ->
         Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            setARGB(255, rnd.nextInt(256), rnd.nextInt(256), rnd.nextInt(256))
+            setARGB(255, 0, 0, 0)
             style = Paint.Style.FILL
             setShadowLayer(shadowSizeDp.toFloat(), 0f, 0f, Color.BLACK)
         }
@@ -44,6 +59,18 @@ class QuickActionButton(context: Context, attrs: AttributeSet? = null) : View(co
         super.onDraw(canvas)
         canvas.drawCircle(centerX, centerY, radius, circlePaint)
     }
+
+    /**
+     * Launches MainActivity. Used as fallback for any errors that might occur.
+     */
+    protected fun launchMainActivity() {
+        val i = Intent(context, MainActivity::class.java)
+        val activity = context as Activity
+        activity.finish()
+        activity.startActivity(i)
+    }
+
+    abstract fun getLabel(): String
 
     private fun dpToPixel(dp: Int): Int =
         TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, dp.toFloat(), resources.displayMetrics).roundToInt()

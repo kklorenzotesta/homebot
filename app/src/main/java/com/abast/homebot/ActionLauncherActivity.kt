@@ -13,6 +13,7 @@ import android.util.Log
 import android.widget.Toast
 import androidx.core.content.ContextCompat
 import com.abast.homebot.actions.HomeAction
+import com.abast.homebot.views.LaunchActivityActionButton
 import kotlinx.android.synthetic.main.activity_launcher.*
 import java.net.URISyntaxException
 
@@ -31,12 +32,15 @@ class ActionLauncherActivity : AppCompatActivity() {
         launcher_background.setOnClickListener {
             finish()
         }
-        launcher_background.setOnButtonClickListener {
-            finish()
-        }
         if (actions.size == 1) {
             actions.first().apply {
                 handleAction(first, second)
+            }
+        } else {
+            actions.filter { it.first == HomeAction.LAUNCH_APP }.map { LaunchActivityActionButton(this).apply {
+                setPackageName(it.second)
+            } }.also {
+                launcher_background.setButtons(it)
             }
         }
     }

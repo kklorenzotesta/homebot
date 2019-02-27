@@ -6,13 +6,13 @@ import android.graphics.Color
 import android.graphics.Path
 import android.graphics.Typeface
 import android.util.AttributeSet
+import android.util.Log
 import android.util.TypedValue
 import android.view.MotionEvent
 import android.view.View
 import android.widget.FrameLayout
 import android.widget.TextView
 import androidx.core.view.children
-import kotlin.math.min
 import kotlin.math.roundToInt
 
 
@@ -22,29 +22,35 @@ class LauncherLayout(context: Context, attrs: AttributeSet) : FrameLayout(contex
     private var elementsMargin: Int = dpToPixel(elementsMarginDp)
     private val ellipse: BottomCircleView = BottomCircleView(context)
     private val label: TextView = TextView(context).apply {
-        text = "Test text very long u know"
         textAlignment = TextView.TEXT_ALIGNMENT_CENTER
         setTextColor(Color.WHITE)
         typeface = Typeface.DEFAULT_BOLD
         visibility = View.VISIBLE
     }
-    private var isOnHold: Boolean = false
+    private var isOnHold: View? = null
 
     init {
+        setButtons(emptyList())
+    }
+
+    fun setButtons(buttons: List<QuickActionButton>) {
+        removeAllViews()
         addView(ellipse)
         addView(label)
-        (1..7).map { QuickActionButton(context) }.forEach { button ->
-            addView(button)
+        buttons.forEach { button ->
             button.setOnLongClickListener {
-                spreadButtonsAround(button)
-                isOnHold = true
+                label.text = button.getLabel()
+                isOnHold = it
+                invalidate()
+                requestLayout()
                 true
             }
             button.setOnTouchListener { _, event ->
                 if (event.action == MotionEvent.ACTION_UP) {
-                    if (isOnHold) {
-                        resetButtonsPosition()
-                        isOnHold = false
+                    if (isOnHold != null) {
+                        isOnHold = null
+                        invalidate()
+                        requestLayout()
                         true
                     } else {
                         false
@@ -53,6 +59,7 @@ class LauncherLayout(context: Context, attrs: AttributeSet) : FrameLayout(contex
                     false
                 }
             }
+            addView(button)
         }
     }
 
@@ -69,7 +76,13 @@ class LauncherLayout(context: Context, attrs: AttributeSet) : FrameLayout(contex
                 centerY + singleChildRadius
             )
         }
-        resetButtonsPosition()
+        val holding = isOnHold
+        if (holding == null) {
+            resetButtonsPosition()
+        } else {
+            spreadButtonsAround(holding)
+        }
+        Log.d("HB", "onLayout")
     }
 
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
@@ -91,6 +104,7 @@ class LauncherLayout(context: Context, attrs: AttributeSet) : FrameLayout(contex
 
     private fun spreadButtonsAround(child: View) {
         var labelStartX = ((child.x + (child.measuredWidth / 2)) - (label.measuredWidth / 2)).roundToInt()
+        Log.d("HB", "label width: ${label.measuredWidth}")
         if (labelStartX < elementsMargin) {
             labelStartX = elementsMargin
         } else if ((labelStartX + label.measuredWidth) > (measuredWidth - elementsMargin)) {
@@ -171,12 +185,6 @@ class LauncherLayout(context: Context, attrs: AttributeSet) : FrameLayout(contex
                 start()
             }
             acc + availableSpace
-        }
-    }
-
-    fun setOnButtonClickListener(listener: (QuickActionButton) -> Unit) {
-        children.filter { it is QuickActionButton }.map { it as QuickActionButton }.forEach { button ->
-            button.setOnClickListener { listener(button) }
         }
     }
 
