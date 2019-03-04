@@ -1,6 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <declare-styleable name="CustomPreferenceTheme">
+        <attr name="actionsPreferenceStyle" format="reference"/>
+    </declare-styleable>
     <declare-styleable name="LaunchActivityActionButton">
         <attr name="targetPackage" format="string"/>
+    </declare-styleable>
+    <declare-styleable name="PreferenceActions">
+        <attr name="test" format="string"/>
     </declare-styleable>
 </resources>

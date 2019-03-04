@@ -34,5 +34,10 @@
         <item name="android:windowIsFloating">true</item>
         <item name="android:backgroundDimEnabled">false</item>
     </style>
+    
+    <style name="Preference.ActionsPreferenceStyle">
+        <item name="android:layout">@layout/actions_preference_layout</item>
+        <!--<item name="android:widgetLayout">@layout/actions_preference_layout</item>-->
+    </style>
 
 </resources>

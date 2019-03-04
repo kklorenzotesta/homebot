@@ -1,16 +1,65 @@
 package com.abast.homebot.actions
 
-import android.content.SharedPreferences
 import androidx.annotation.StringRes
 import com.abast.homebot.R
+import com.fasterxml.jackson.annotation.JsonIgnore
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties
+import com.fasterxml.jackson.annotation.JsonSubTypes
+import com.fasterxml.jackson.annotation.JsonTypeInfo
 
-enum class HomeAction(@StringRes val titleRes: Int, val repeatable: Boolean = false) {
-    LAUNCH_APP(R.string.pref_title_app, true),
-    LAUNCH_SHORTCUT(R.string.pref_title_shortcut, true),
-    TOGGLE_FLASHLIGHT(R.string.pref_title_flashlight),
-    TOGGLE_BRIGHTNESS(R.string.pref_title_brightness),
-    OPEN_WEB(R.string.pref_title_web, true),
-    OPEN_RECENT_APPS(R.string.pref_title_prev_app);
+@JsonTypeInfo(
+    use = JsonTypeInfo.Id.MINIMAL_CLASS,
+    include = JsonTypeInfo.As.PROPERTY,
+    property = "@class"
+)
+@JsonSubTypes(
+    value = [
+        JsonSubTypes.Type(OpenWeb::class),
+        JsonSubTypes.Type(LaunchApp::class),
+        JsonSubTypes.Type(ToggleBrightness::class),
+        JsonSubTypes.Type(OpenRecentApps::class),
+        JsonSubTypes.Type(LaunchShortcut::class),
+        JsonSubTypes.Type(ToggleFlashlight::class)
+    ]
+)
+@JsonIgnoreProperties(ignoreUnknown = true)
+sealed class HomeAction {
+    @get:JsonIgnore
+    @get:StringRes
+    abstract val titleRes: Int
+}
+
+object ToggleFlashlight : HomeAction() {
+    override val titleRes: Int
+        get() = R.string.pref_title_flashlight
+}
+
+object ToggleBrightness : HomeAction() {
+    override val titleRes: Int
+        get() = R.string.pref_title_brightness
+}
+
+object OpenRecentApps : HomeAction() {
+    override val titleRes: Int
+        get() = R.string.pref_title_prev_app
+}
+
+data class LaunchApp(val uri: String) : HomeAction() {
+    override val titleRes: Int
+        get() = R.string.pref_title_app
+}
+
+data class LaunchShortcut(val uri: String) : HomeAction() {
+    override val titleRes: Int
+        get() = R.string.pref_title_shortcut
+}
+
+data class OpenWeb(val address: String) : HomeAction() {
+    override val titleRes: Int
+        get() = R.string.pref_title_web
+}
+
+/*enum class HomeAction(@StringRes val titleRes: Int, val repeatable: Boolean = false) {
 
     fun switchKey(): String = this.name.toLowerCase()
 
@@ -67,4 +116,4 @@ enum class HomeAction(@StringRes val titleRes: Int, val repeatable: Boolean = fa
     } else {
         (sharedPreferences.getString(key(), null) ?: "").isNotEmpty()
     }
-}
+}*/

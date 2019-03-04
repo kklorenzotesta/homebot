@@ -51,7 +51,6 @@ class LaunchActivityActionButton @JvmOverloads constructor(
         context.packageManager.resolveActivity(Intent.parseUri(uri, 0), 0).activityInfo.loadLabel(context.packageManager).toString()
 
     override fun onDraw(canvas: Canvas) {
-        super.onDraw(canvas)
         context.packageManager.getActivityIcon(Intent.parseUri(uri, 0)).apply {
             setBounds(
                 (centerX - radius).roundToInt(),

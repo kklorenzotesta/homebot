@@ -12,8 +12,12 @@ import android.provider.Settings
 import android.util.Log
 import android.widget.Toast
 import androidx.core.content.ContextCompat
-import com.abast.homebot.actions.HomeAction
+import com.abast.homebot.actions.*
 import com.abast.homebot.views.LaunchActivityActionButton
+import com.fasterxml.jackson.core.type.TypeReference
+import com.fasterxml.jackson.databind.ObjectMapper
+import com.fasterxml.jackson.databind.ObjectReader
+import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import kotlinx.android.synthetic.main.activity_launcher.*
 import java.net.URISyntaxException
 
@@ -21,9 +25,12 @@ class ActionLauncherActivity : AppCompatActivity() {
     private val sharedPrefs: SharedPreferences by lazy {
         PreferenceManager.getDefaultSharedPreferences(this)
     }
-    private val actions: List<Pair<HomeAction, String>> by lazy {
-        HomeAction.values().filter { it.isSet(sharedPrefs) }
-            .flatMap { ac -> ac.content(sharedPrefs).map { Pair(ac, it.first) } }
+    private val mapper: ObjectMapper by lazy { jacksonObjectMapper() }
+    private val actionsReader: ObjectReader by lazy { mapper.readerFor(object : TypeReference<List<HomeAction>>() {}) }
+
+    private val actions: List<HomeAction> by lazy {
+        val string = sharedPrefs.getString("testKey", "[]")
+        actionsReader.readValue<List<HomeAction>>(string)
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -33,13 +40,17 @@ class ActionLauncherActivity : AppCompatActivity() {
             finish()
         }
         if (actions.size == 1) {
-            actions.first().apply {
-                handleAction(first, second)
+            actions.first().run {
+                handleAction(this)
             }
+        } else if (actions.isEmpty()) {
+            launchMainActivity()
         } else {
-            actions.filter { it.first == HomeAction.LAUNCH_APP }.map { LaunchActivityActionButton(this).apply {
-                setPackageName(it.second)
-            } }.also {
+            actions.filter { it is LaunchApp }.map { it as LaunchApp }.map {
+                LaunchActivityActionButton(this).apply {
+                    setPackageName(it.uri)
+                }
+            }.also {
                 launcher_background.setButtons(it)
             }
         }
@@ -62,14 +73,14 @@ class ActionLauncherActivity : AppCompatActivity() {
         finish()
     }
 
-    private fun handleAction(action: HomeAction?, value: String) {
+    private fun handleAction(action: HomeAction) {
         when (action) {
-            HomeAction.TOGGLE_FLASHLIGHT -> toggleFlashlight()
-            HomeAction.TOGGLE_BRIGHTNESS -> toggleBrightness()
-            HomeAction.OPEN_RECENT_APPS -> openRecents()
-            HomeAction.OPEN_WEB -> openWebAddress(value)
-            HomeAction.LAUNCH_SHORTCUT, HomeAction.LAUNCH_APP -> launchUri(value)
-            else -> launchMainActivity()
+            is ToggleFlashlight -> toggleFlashlight()
+            is ToggleBrightness -> toggleBrightness()
+            is OpenRecentApps -> openRecents()
+            is OpenWeb -> openWebAddress(action.address)
+            is LaunchShortcut -> launchUri(action.uri)
+            is LaunchApp -> launchUri(action.uri)
         }
     }
 

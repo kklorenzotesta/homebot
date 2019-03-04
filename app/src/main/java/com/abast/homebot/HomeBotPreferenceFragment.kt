@@ -14,7 +14,9 @@ import android.widget.EditText
 import androidx.appcompat.app.AlertDialog
 import androidx.preference.*
 import com.abast.homebot.actions.HomeAction
+import com.abast.homebot.actions.OpenWeb
 import com.abast.homebot.pickers.AppPickerActivity
+import kotlin.reflect.KClass
 
 class HomeBotPreferenceFragment : PreferenceFragmentCompat() {
     companion object {
@@ -25,7 +27,7 @@ class HomeBotPreferenceFragment : PreferenceFragmentCompat() {
         PreferenceManager.getDefaultSharedPreferences(context)
     }
     private val switches: HashMap<SwitchPreference, HomeAction> = HashMap()
-    private val categories: HashMap<HomeAction, PreferenceCategory> = HashMap()
+    private val categories: HashMap<KClass<out HomeAction>, PreferenceCategory> = HashMap()
 
     private lateinit var appPickerIntent: Intent
     private lateinit var shortcutPickerIntent: Intent
@@ -44,44 +46,44 @@ class HomeBotPreferenceFragment : PreferenceFragmentCompat() {
 
     override fun onCreatePreferences(savedInstanceState: Bundle?, rootKey: String?) {
         addPreferencesFromResource(R.xml.pref_general)
-        val shared = sharedPreferences
-        Log.d("HomeBot", "shared is $shared")
-        val (repeatables, nonRepeatables) = HomeAction.values().partition { it.repeatable }
-        repeatables.forEach {
-            val category = PreferenceCategory(context)
-            preferenceScreen.addPreference(category)
-            categories[it] = category
-            category.addPreference(SwitchPreference(context).apply {
-                setTitle(it.titleRes)
-                key = it.switchKey()
-                isChecked = false
-                summary = ""
-                switches[this] = it
-            })
-            it.content(shared).forEach { (value, summary) ->
-                category.addPreference(SwitchPreference(context).apply {
-                    title = summary
-                    key = it.switchKey() + value
-                    isChecked = true
-                    extras.putString(VALUE_EXTRA_KEY, value)
-                    switches[this] = it
-                })
-            }
-        }
-        val nonRepeatableCategory = PreferenceCategory(context)
-        preferenceScreen.addPreference(nonRepeatableCategory)
-        nonRepeatables.forEach {
-            nonRepeatableCategory.addPreference(SwitchPreference(context).apply {
-                setTitle(it.titleRes)
-                key = it.switchKey()
-                isChecked = it.isSet(shared)
-                summary = it.content(shared).firstOrNull()?.second ?: ""
-                switches[this] = it
-            })
-        }
+        /*val shared = sharedPreferences
+         Log.d("HomeBot", "shared is $shared")
+         val (repeatables, nonRepeatables) = HomeAction.values().partition { it.repeatable }
+         repeatables.forEach {
+             val category = PreferenceCategory(context)
+             preferenceScreen.addPreference(category)
+             categories[it] = category
+             category.addPreference(SwitchPreference(context).apply {
+                 setTitle(it.titleRes)
+                 key = it.switchKey()
+                 isChecked = false
+                 summary = ""
+                 switches[this] = it
+             })
+             it.content(shared).forEach { (value, summary) ->
+                 category.addPreference(SwitchPreference(context).apply {
+                     title = summary
+                     key = it.switchKey() + value
+                     isChecked = true
+                     extras.putString(VALUE_EXTRA_KEY, value)
+                     switches[this] = it
+                 })
+             }
+         }
+         val nonRepeatableCategory = PreferenceCategory(context)
+         preferenceScreen.addPreference(nonRepeatableCategory)
+         nonRepeatables.forEach {
+             nonRepeatableCategory.addPreference(SwitchPreference(context).apply {
+                 setTitle(it.titleRes)
+                 key = it.switchKey()
+                 isChecked = it.isSet(shared)
+                 summary = it.content(shared).firstOrNull()?.second ?: ""
+                 switches[this] = it
+             })
+         }*/
     }
 
-    override fun onPreferenceTreeClick(preference: Preference?): Boolean {
+    /*override fun onPreferenceTreeClick(preference: Preference?): Boolean {
         val switch = preference as SwitchPreference
         if (switch.isChecked) {
             val action: HomeAction? = switches[switch]
@@ -214,7 +216,7 @@ class HomeBotPreferenceFragment : PreferenceFragmentCompat() {
      * Sets the web url to launch
      */
     private fun setLaunchUrl(url: String) {
-        categories[HomeAction.OPEN_WEB]!!.addPreference(SwitchPreference(context).apply {
+        categories[OpenWeb::class]!!.addPreference(SwitchPreference(context).apply {
             title = url
             key = HomeAction.OPEN_WEB.switchKey() + url
             isChecked = true
@@ -222,6 +224,6 @@ class HomeBotPreferenceFragment : PreferenceFragmentCompat() {
             switches[this] = HomeAction.OPEN_WEB
         })
         HomeAction.OPEN_WEB.addValue(url, url, sharedPreferences)
-    }
+    }*/
 
 }

@@ -32,4 +32,7 @@
     <string name="open_source_licenses">Open-source licenses</string>
     <string name="flashlight_on">Flashlight is active</string>
 
+    <string name="actions_setting_key">actions_preference</string>
+    <string name="actions_setting_title">Quick actions:</string>
+
 </resources>

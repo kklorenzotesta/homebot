@@ -1,9 +1,10 @@
-<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android">
-
-    <PreferenceCategory android:title="@string/pref_header">
-
-
-    </PreferenceCategory>
-
-
-</PreferenceScreen>
+<androidx.preference.PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
+                                      xmlns:app="http://schemas.android.com/apk/res-auto">
+    <androidx.preference.PreferenceCategory android:title="@string/pref_header"
+                                            app:allowDividerBelow="false"
+                                            app:iconSpaceReserved="false">
+        <com.abast.homebot.ActionsPreference
+                app:key="@string/actions_setting_key"
+                app:title="@string/actions_setting_title"/>
+    </androidx.preference.PreferenceCategory>
+</androidx.preference.PreferenceScreen>

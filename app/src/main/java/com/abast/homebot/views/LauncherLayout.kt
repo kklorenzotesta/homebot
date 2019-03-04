@@ -77,10 +77,12 @@ class LauncherLayout(context: Context, attrs: AttributeSet) : FrameLayout(contex
             )
         }
         val holding = isOnHold
-        if (holding == null) {
-            resetButtonsPosition()
-        } else {
-            spreadButtonsAround(holding)
+        if (children.filter { it is QuickActionButton }.count() > 0) {
+            if (holding == null) {
+                resetButtonsPosition()
+            } else {
+                spreadButtonsAround(holding)
+            }
         }
         Log.d("HB", "onLayout")
     }
