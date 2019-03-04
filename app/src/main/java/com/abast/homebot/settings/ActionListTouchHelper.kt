@@ -4,7 +4,7 @@ import androidx.recyclerview.widget.ItemTouchHelper
 import androidx.recyclerview.widget.RecyclerView
 
 class ActionListTouchHelper(
-    preference: ActionsPreference
+    adapter: ActionListAdapter
 ) : ItemTouchHelper(
     object : ItemTouchHelper.Callback() {
         override fun getMovementFlags(recyclerView: RecyclerView, viewHolder: RecyclerView.ViewHolder): Int =
@@ -14,17 +14,18 @@ class ActionListTouchHelper(
             recyclerView: RecyclerView,
             viewHolder: RecyclerView.ViewHolder,
             target: RecyclerView.ViewHolder
-        ): Boolean =
-            (viewHolder as? ActionListViewHolder)?.action()?.let { a1 ->
-                (target as? ActionListViewHolder)?.action()?.let { a2 ->
-                    preference.swapActions(a1, a2)
-                    true
-                }
-            } ?: false
+        ): Boolean {
+            adapter.moveActions(viewHolder.adapterPosition, target.adapterPosition)
+            return true
+        }
 
         override fun onSwiped(viewHolder: RecyclerView.ViewHolder, direction: Int) {
-            (viewHolder as? ActionListViewHolder)?.action()?.let { action -> preference.removeAction(action) }
+            (viewHolder as? ActionListViewHolder)?.action()?.let { action -> adapter.removeAction(action) }
         }
+
+        override fun isLongPressDragEnabled(): Boolean = true
+
+        override fun isItemViewSwipeEnabled(): Boolean = true
 
     }
 )

@@ -38,5 +38,6 @@
     <string name="add_action_preference_key">add_action_key</string>
     <string name="add_action_preference_titlle">Add quick action</string>
     <string name="action_icon_content_description">Quick action icon</string>
+    <string name="reorder_action_icon_description">reorder action icon</string>
 
 </resources>

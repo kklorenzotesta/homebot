@@ -9,6 +9,8 @@ import com.fasterxml.jackson.annotation.JsonIgnore
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties
 import com.fasterxml.jackson.annotation.JsonSubTypes
 import com.fasterxml.jackson.annotation.JsonTypeInfo
+import java.lang.ref.SoftReference
+import java.lang.ref.WeakReference
 
 @JsonTypeInfo(
     use = JsonTypeInfo.Id.MINIMAL_CLASS,
@@ -60,8 +62,18 @@ object OpenRecentApps : HomeAction() {
 }
 
 data class LaunchApp(val uri: String) : HomeAction() {
-    override fun icon(context: Context): Drawable =
-        context.packageManager.getActivityIcon(Intent.parseUri(uri, 0))
+    private var iconCache: SoftReference<Drawable>? = null
+
+    override fun icon(context: Context): Drawable {
+        val cache = iconCache?.get()
+        return if (cache == null) {
+            val newIcon = context.packageManager.getActivityIcon(Intent.parseUri(uri, 0))
+            iconCache = SoftReference(newIcon)
+            newIcon
+        } else {
+            cache
+        }
+    }
 
     override fun label(context: Context): String =
         context.packageManager.resolveActivity(
