@@ -35,4 +35,7 @@
     <string name="actions_setting_key">actions_preference</string>
     <string name="actions_setting_title">Quick actions:</string>
 
+    <string name="add_action_preference_key">add_action_key</string>
+    <string name="add_action_preference_titlle">Add quick action</string>
+
 </resources>

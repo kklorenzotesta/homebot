@@ -10,6 +10,7 @@ import android.provider.Settings
 import android.view.Menu
 import android.view.MenuItem
 import android.view.View
+import com.abast.homebot.settings.HomeBotPreferenceFragment
 import kotlinx.android.synthetic.main.activity_main.*
 
 class MainActivity : AppCompatActivity() {
@@ -29,7 +30,9 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        supportFragmentManager.beginTransaction().replace(R.id.preferences_frame, HomeBotPreferenceFragment()).commit()
+        supportFragmentManager.beginTransaction().replace(R.id.preferences_frame,
+            HomeBotPreferenceFragment()
+        ).commit()
     }
 
     override fun onResume() {

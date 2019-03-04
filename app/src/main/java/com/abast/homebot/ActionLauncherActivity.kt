@@ -29,7 +29,7 @@ class ActionLauncherActivity : AppCompatActivity() {
     private val actionsReader: ObjectReader by lazy { mapper.readerFor(object : TypeReference<List<HomeAction>>() {}) }
 
     private val actions: List<HomeAction> by lazy {
-        val string = sharedPrefs.getString("testKey", "[]")
+        val string = sharedPrefs.getString(getString(R.string.actions_setting_key), "[]")
         actionsReader.readValue<List<HomeAction>>(string)
     }
 
