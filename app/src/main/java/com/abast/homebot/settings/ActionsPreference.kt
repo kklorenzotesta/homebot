@@ -37,6 +37,7 @@ class ActionsPreference @JvmOverloads constructor(
         (holder.findViewById(R.id.actions_preference_list) as? RecyclerView)?.let { list ->
             list.layoutManager = LinearLayoutManager(context)
             list.adapter = adapter
+            ActionListTouchHelper(this).attachToRecyclerView(list)
         }
     }
 
@@ -55,6 +56,21 @@ class ActionsPreference @JvmOverloads constructor(
         if (!actions.contains(action)) {
             setValue(actions + action)
         }
+    }
+
+    fun swapActions(a1: HomeAction, a2: HomeAction) {
+        val actions = getValue().toMutableList()
+        val a1Index = actions.indexOf(a1)
+        val a2Index = actions.indexOf(a2)
+        if (a1Index != -1 && a2Index != -1) {
+            actions[a1Index] = a2
+            actions[a2Index] = a1
+            setValue(actions)
+        }
+    }
+
+    fun removeAction(action: HomeAction) {
+        setValue(getValue() - action)
     }
 
 }

@@ -1,5 +1,8 @@
 package com.abast.homebot.actions
 
+import android.content.Context
+import android.content.Intent
+import android.graphics.drawable.Drawable
 import androidx.annotation.StringRes
 import com.abast.homebot.R
 import com.fasterxml.jackson.annotation.JsonIgnore
@@ -27,34 +30,59 @@ sealed class HomeAction {
     @get:JsonIgnore
     @get:StringRes
     abstract val titleRes: Int
+
+    fun title(context: Context): String = context.getString(titleRes)
+
+    abstract fun label(context: Context): String
+
+    abstract fun icon(context: Context): Drawable
 }
 
 object ToggleFlashlight : HomeAction() {
+    override fun icon(context: Context): Drawable = TODO("not implemented")
+    override fun label(context: Context): String = title(context)
     override val titleRes: Int
         get() = R.string.pref_title_flashlight
 }
 
 object ToggleBrightness : HomeAction() {
+    override fun icon(context: Context): Drawable = TODO("not implemented")
+    override fun label(context: Context): String = title(context)
     override val titleRes: Int
         get() = R.string.pref_title_brightness
 }
 
 object OpenRecentApps : HomeAction() {
+    override fun icon(context: Context): Drawable = TODO("not implemented")
+    override fun label(context: Context): String = title(context)
     override val titleRes: Int
         get() = R.string.pref_title_prev_app
 }
 
 data class LaunchApp(val uri: String) : HomeAction() {
+    override fun icon(context: Context): Drawable =
+        context.packageManager.getActivityIcon(Intent.parseUri(uri, 0))
+
+    override fun label(context: Context): String =
+        context.packageManager.resolveActivity(
+            Intent.parseUri(uri, 0),
+            0
+        ).activityInfo.loadLabel(context.packageManager).toString()
+
     override val titleRes: Int
         get() = R.string.pref_title_app
 }
 
 data class LaunchShortcut(val uri: String) : HomeAction() {
+    override fun icon(context: Context): Drawable = TODO("not implemented")
+    override fun label(context: Context): String = title(context)
     override val titleRes: Int
         get() = R.string.pref_title_shortcut
 }
 
 data class OpenWeb(val address: String) : HomeAction() {
+    override fun icon(context: Context): Drawable = TODO("not implemented")
+    override fun label(context: Context): String = title(context)
     override val titleRes: Int
         get() = R.string.pref_title_web
 }
