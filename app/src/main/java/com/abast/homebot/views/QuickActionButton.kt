@@ -1,20 +1,15 @@
 package com.abast.homebot.views
 
-import android.app.Activity
 import android.content.Context
-import android.content.Intent
 import android.graphics.Canvas
-import android.graphics.Color
-import android.graphics.Paint
 import android.util.AttributeSet
 import android.util.TypedValue
 import android.view.View
-import com.abast.homebot.MainActivity
+import com.abast.homebot.actions.HomeAction
 import kotlin.math.min
 import kotlin.math.roundToInt
-import kotlin.random.Random
 
-abstract class QuickActionButton : View {
+class QuickActionButton : View {
     constructor(context: Context)
             : super(context)
 
@@ -27,19 +22,19 @@ abstract class QuickActionButton : View {
     constructor(context: Context, attrs: AttributeSet?, defStyleAttr: Int, defStyleRes: Int)
             : super(context, attrs, defStyleAttr, defStyleRes)
 
-    private val shadowSizeDp: Int = 10
-
-    protected var centerX: Float = 0F
-    protected var centerY: Float = 0F
-    protected var radius: Float = 0F
-
-    private val circlePaint: Paint = Random(Random.nextInt()).let { _ ->
-        Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            setARGB(255, 0, 0, 0)
-            style = Paint.Style.FILL
-            setShadowLayer(shadowSizeDp.toFloat(), 0f, 0f, Color.BLACK)
+    init {
+        setOnClickListener {
+            action?.run(context)
         }
     }
+
+    private val shadowSizeDp: Int = 10
+
+    var centerX: Float = 0F
+    var centerY: Float = 0F
+    var radius: Float = 0F
+
+    private var action: HomeAction? = null
 
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
         setMeasuredDimension(
@@ -57,20 +52,26 @@ abstract class QuickActionButton : View {
 
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
-        canvas.drawCircle(centerX, centerY, radius, circlePaint)
+        action?.let { action ->
+            action.icon(context).apply {
+                setBounds(
+                    (centerX - radius).roundToInt(),
+                    (centerY - radius).roundToInt(),
+                    (centerX + radius).roundToInt(),
+                    (centerY + radius).roundToInt()
+                )
+                draw(canvas)
+            }
+        }
     }
 
-    /**
-     * Launches MainActivity. Used as fallback for any errors that might occur.
-     */
-    protected fun launchMainActivity() {
-        val i = Intent(context, MainActivity::class.java)
-        val activity = context as Activity
-        activity.finish()
-        activity.startActivity(i)
+    fun setAction(action: HomeAction) {
+        this.action = action
+        invalidate()
+        requestLayout()
     }
 
-    abstract fun getLabel(): String
+    fun getLabel(): String = action?.label(context) ?: ""
 
     private fun dpToPixel(dp: Int): Int =
         TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, dp.toFloat(), resources.displayMetrics).roundToInt()
