@@ -4,6 +4,7 @@ import android.animation.ArgbEvaluator
 import android.animation.ObjectAnimator
 import android.annotation.SuppressLint
 import android.graphics.Color
+import android.graphics.drawable.ColorDrawable
 import android.view.MotionEvent
 import android.view.View
 import android.widget.ImageView
@@ -25,6 +26,7 @@ class ActionListViewHolder(view: View, private val touchHelper: ItemTouchHelper)
     private var holdColor: Int? = null
     private var textColor: Int? = null
     private val defaultTextViewColor: Int = label.currentTextColor
+    private val defaultBackgroundColor: Int = (view.background as ColorDrawable).color
     var underColor: Int? = null
         private set
 
@@ -52,38 +54,45 @@ class ActionListViewHolder(view: View, private val touchHelper: ItemTouchHelper)
             }
             holdColor = newColor?.rgb
             textColor = newColor?.bodyTextColor
-            underColor = palette?.lightMutedSwatch?.rgb ?: holdColor?.let { manipulateColor(it, 2.2F) }
+            underColor = palette?.lightMutedSwatch?.rgb ?: holdColor?.let(::getUnderViewColor)
         }
         lastAction = action
     }
 
-    fun manipulateColor(color: Int, factor: Float): Int {
-        val a = Color.alpha(color)
-        val r = Math.round(Color.red(color) * factor)
-        val g = Math.round(Color.green(color) * factor)
-        val b = Math.round(Color.blue(color) * factor)
-        return Color.argb(
-            a,
-            Math.min(r, 255),
-            Math.min(g, 255),
-            Math.min(b, 255)
-        )
+    private fun getUnderViewColor(viewColor: Int): Int {
+        val a = Color.alpha(viewColor)
+        val r = Color.red(viewColor)
+        val g = Color.green(viewColor)
+        val b = Color.blue(viewColor)
+        return Color.argb(a / 8, r, g, b)
     }
 
     fun action(): HomeAction? = lastAction
 
     fun setOnHold(onHold: Boolean) {
         if (!onHold) {
-            itemView.setBackgroundColor(Color.WHITE)
+            itemView.setBackgroundColor(defaultBackgroundColor)
             label.setTextColor(defaultTextViewColor)
-            reorderIcon.setColorFilter(Color.BLACK)
+            reorderIcon.setColorFilter(defaultTextViewColor)
         } else {
             holdColor?.also { holdColor ->
                 textColor?.also { textColor ->
                     listOf(
-                        ObjectAnimator.ofObject(itemView, "backgroundColor", ArgbEvaluator(), Color.WHITE, holdColor),
+                        ObjectAnimator.ofObject(
+                            itemView,
+                            "backgroundColor",
+                            ArgbEvaluator(),
+                            defaultBackgroundColor,
+                            holdColor
+                        ),
                         ObjectAnimator.ofObject(label, "textColor", ArgbEvaluator(), label.currentTextColor, textColor),
-                        ObjectAnimator.ofObject(reorderIcon, "colorFilter", ArgbEvaluator(), Color.BLACK, textColor)
+                        ObjectAnimator.ofObject(
+                            reorderIcon,
+                            "colorFilter",
+                            ArgbEvaluator(),
+                            defaultTextViewColor,
+                            textColor
+                        )
                     ).forEach {
                         it.apply {
                             duration = 250
