@@ -2,6 +2,7 @@
 <resources>
     <declare-styleable name="CustomPreferenceTheme">
         <attr name="actionsPreferenceStyle" format="reference"/>
+        <attr name="addActionPreferenceStyle" format="reference"/>
     </declare-styleable>
     <declare-styleable name="LaunchActivityActionButton">
         <attr name="targetPackage" format="string"/>

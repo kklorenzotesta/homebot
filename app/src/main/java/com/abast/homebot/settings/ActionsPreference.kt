@@ -27,7 +27,7 @@ class ActionsPreference @JvmOverloads constructor(
     private val writer: ObjectWriter by lazy { mapper.writerFor(typeRef) }
     private val reader: ObjectReader by lazy { mapper.readerFor(typeRef) }
     private val adapter: ActionListAdapter by lazy {
-        ActionListAdapter().also {
+        ActionListAdapter(context).also {
             it.registerAdapterDataObserver(object : RecyclerView.AdapterDataObserver() {
                 override fun onChanged() {
                     setValue(adapter.currentItems())

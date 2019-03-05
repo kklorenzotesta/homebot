@@ -1,24 +1,20 @@
 package com.abast.homebot.settings
 
 import android.app.Activity
-import android.content.Context
 import android.content.Intent
-import android.content.SharedPreferences
 import android.content.pm.ActivityInfo
 import android.os.Bundle
 import android.util.Log
-import androidx.preference.*
+import android.widget.EditText
+import androidx.appcompat.app.AlertDialog
+import androidx.preference.Preference
+import androidx.preference.PreferenceFragmentCompat
 import com.abast.homebot.R
-import com.abast.homebot.actions.HomeAction
-import com.abast.homebot.actions.LaunchApp
+import com.abast.homebot.actions.*
 import com.abast.homebot.pickers.AppPickerActivity
 import kotlin.reflect.KClass
 
-class HomeBotPreferenceFragment : PreferenceFragmentCompat() {
-    companion object {
-        const val VALUE_EXTRA_KEY = "pref_value"
-    }
-
+class HomeBotPreferenceFragment : PreferenceFragmentCompat(), AddActionPreference.Listener {
     private val appPickerIntent: Intent by lazy {
         Intent(context, AppPickerActivity::class.java).apply {
             putExtra(AppPickerActivity.EXTRA_LABEL, getString(R.string.choose_app))
@@ -33,24 +29,65 @@ class HomeBotPreferenceFragment : PreferenceFragmentCompat() {
         }
     }
 
-    private val addActionPreference: Preference by lazy {
-        findPreference<Preference>(getString(R.string.add_action_preference_key))
-    }
-
     private val actionsPreference: ActionsPreference by lazy {
         findPreference<ActionsPreference>(getString(R.string.actions_setting_key))
     }
 
     override fun onCreatePreferences(savedInstanceState: Bundle?, rootKey: String?) {
         addPreferencesFromResource(R.xml.pref_general)
-        addActionPreference.setOnPreferenceClickListener {
-            startActivityForResult(appPickerIntent, AppPickerActivity.REQUEST_CODE_APP)
-            true
+    }
+
+    override fun onDisplayPreferenceDialog(preference: Preference) {
+        if (preference is AddActionPreference) {
+            AddActionPreferenceDialogFragment.newInstance(preference.key).let { dialog ->
+                dialog.setTargetFragment(this, 0)
+                dialog.listener = this
+                dialog.show(fragmentManager!!, "androidx.preference.PreferenceFragment.DIALOG")
+            }
+        } else {
+            super.onDisplayPreferenceDialog(preference)
+        }
+    }
+
+    override fun createAction(type: KClass<out HomeAction>) {
+        when (type) {
+            ToggleBrightness::class, ToggleFlashlight::class, OpenRecentApps::class -> actionsPreference.addAction(
+                type.dumbInstance()
+            )
+            LaunchApp::class -> startActivityForResult(
+                appPickerIntent,
+                AppPickerActivity.REQUEST_CODE_APP
+            )
+            LaunchShortcut::class -> startActivityForResult(
+                shortcutPickerIntent,
+                AppPickerActivity.REQUEST_CODE_SHORTCUT
+            )
+            OpenWeb::class -> showWebDialog()
+        }
+    }
+
+    /**
+     * Shows dialog with EditText to enter a url
+     */
+    private fun showWebDialog() {
+        context?.let {
+            val et = EditText(it)
+            et.hint = getString(R.string.web_hint)
+            val builder = AlertDialog.Builder(it)
+            builder.setTitle(R.string.enter_url)
+            builder.setView(et)
+            builder.setPositiveButton(R.string.ok) { dialog, _ ->
+                actionsPreference.addAction(OpenWeb(et.text.toString()))
+                dialog.dismiss()
+            }
+            val dialog: AlertDialog = builder.create()
+            dialog.show()
         }
     }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
+        Log.d("KHB", "outer result")
         if (resultCode == Activity.RESULT_OK) {
             when (requestCode) {
                 AppPickerActivity.REQUEST_CODE_APP -> {
@@ -61,64 +98,17 @@ class HomeBotPreferenceFragment : PreferenceFragmentCompat() {
                         actionsPreference.addAction(LaunchApp(value))
                     }
                 }
-                /*AppPickerActivity.REQUEST_CODE_SHORTCUT -> {
+                AppPickerActivity.REQUEST_CODE_SHORTCUT -> {
                     val shortcutIntent = data?.extras?.getParcelable<Intent>(Intent.EXTRA_SHORTCUT_INTENT)!!
                     val shortcutName = data.extras?.getString(Intent.EXTRA_SHORTCUT_NAME)!!
                     val value = shortcutIntent.toUri(Intent.URI_INTENT_SCHEME)
-                    categories[HomeAction.LAUNCH_SHORTCUT]!!.addPreference(SwitchPreference(context).apply {
-                        title = shortcutName
-                        key = HomeAction.LAUNCH_SHORTCUT.switchKey() + value
-                        isChecked = true
-                        extras.putString(VALUE_EXTRA_KEY, value)
-                        switches[this] = HomeAction.LAUNCH_SHORTCUT
-                    })
-                    HomeAction.LAUNCH_SHORTCUT.addValue(value, shortcutName, sharedPreferences)
-                }*/
+                    actionsPreference.addAction(LaunchShortcut(value, shortcutName))
+                }
             }
         }
     }
 
-    /*override fun onPreferenceTreeClick(preference: Preference?): Boolean {
-        val switch = preference as SwitchPreference
-        if (switch.isChecked) {
-            val action: HomeAction? = switches[switch]
-            when (action) {
-                HomeAction.LAUNCH_APP -> {
-                    switch.isChecked = false
-                    startActivityForResult(appPickerIntent, AppPickerActivity.REQUEST_CODE_APP)
-                }
-                HomeAction.LAUNCH_SHORTCUT -> {
-                    switch.isChecked = false
-                    startActivityForResult(
-                        shortcutPickerIntent,
-                        AppPickerActivity.REQUEST_CODE_SHORTCUT
-                    )
-                }
-                HomeAction.TOGGLE_BRIGHTNESS -> {
-                    askForBrightnessPermission()
-                }
-                HomeAction.OPEN_WEB -> {
-                    switch.isChecked = false
-                    showWebDialog { setLaunchUrl(it) }
-                }
-                null -> Unit
-                else -> action.addValue("true", "", sharedPreferences)
-            }
-        } else {
-            switches[switch]!!.removeValue(
-                switch.extras.getString(VALUE_EXTRA_KEY) ?: "",
-                sharedPreferences
-            )
-            if (switches[switch]!!.repeatable) {
-                categories[switches[switch]!!]!!.removePreference(switch)
-            } else {
-                switch.summary = null
-            }
-        }
-        return super.onPreferenceTreeClick(preference)
-    }
-
-    override fun onResume() {
+    /*override fun onResume() {
         super.onResume()
 
         // Check if we have brightness permission
@@ -127,11 +117,6 @@ class HomeBotPreferenceFragment : PreferenceFragmentCompat() {
             brightnessSwitch.isChecked = false
         }
     }
-
-    private fun findSwitch(action: HomeAction): SwitchPreference =
-        switches.entries.find { it.value == action }!!.key
-
-    // ============== Utils ============== //
 
     /**
      * Opens settings app to enable settings write
@@ -145,43 +130,6 @@ class HomeBotPreferenceFragment : PreferenceFragmentCompat() {
                 startActivity(intent)
             }
         }
-    }
-
-    /**
-     * Shows dialog with EditText to enter a url
-     */
-    private fun showWebDialog(onInput: (String) -> Unit) {
-        context?.let {
-            val et = EditText(it)
-            et.hint = getString(R.string.web_hint)
-            val builder = AlertDialog.Builder(it)
-            builder.setTitle(R.string.enter_url)
-            builder.setView(et)
-            builder.setPositiveButton(R.string.ok) { dialog, _ ->
-                onInput.invoke(et.text.toString())
-                dialog.dismiss()
-            }
-            builder.setNegativeButton(R.string.cancel) { dialog, _ ->
-                findSwitch(HomeAction.OPEN_WEB).isChecked = false
-                dialog.cancel()
-            }
-            val dialog: AlertDialog = builder.create()
-            dialog.show()
-        }
-    }
-
-    /**
-     * Sets the web url to launch
-     */
-    private fun setLaunchUrl(url: String) {
-        categories[OpenWeb::class]!!.addPreference(SwitchPreference(context).apply {
-            title = url
-            key = HomeAction.OPEN_WEB.switchKey() + url
-            isChecked = true
-            extras.putString(VALUE_EXTRA_KEY, url)
-            switches[this] = HomeAction.OPEN_WEB
-        })
-        HomeAction.OPEN_WEB.addValue(url, url, sharedPreferences)
     }*/
 
 }

@@ -1,5 +1,6 @@
 package com.abast.homebot.settings
 
+import android.content.Context
 import android.view.LayoutInflater
 import android.view.ViewGroup
 import androidx.recyclerview.widget.ItemTouchHelper
@@ -8,8 +9,8 @@ import com.abast.homebot.R
 import com.abast.homebot.actions.HomeAction
 import java.util.*
 
-class ActionListAdapter : RecyclerView.Adapter<ActionListViewHolder>() {
-    val touchHelper: ItemTouchHelper by lazy { ActionListTouchHelper(this) }
+class ActionListAdapter(context: Context) : RecyclerView.Adapter<ActionListViewHolder>() {
+    val touchHelper: ItemTouchHelper by lazy { ActionListTouchHelper(context, this) }
 
     private val items: MutableList<HomeAction> = mutableListOf()
 
@@ -25,10 +26,17 @@ class ActionListAdapter : RecyclerView.Adapter<ActionListViewHolder>() {
         holder.bind(items[position])
     }
 
-    fun addAction(action: HomeAction) {
+    fun addAction(action: HomeAction, index: Int? = null) {
         if (!items.contains(action)) {
-            items.add(action)
-            notifyItemInserted(itemCount - 1)
+            notifyItemInserted(
+                if (index != null && index >= 0 && index <= items.size) {
+                    items.add(index, action)
+                    index
+                } else {
+                    items.add(action)
+                    itemCount - 1
+                }
+            )
         }
     }
 
@@ -38,12 +46,13 @@ class ActionListAdapter : RecyclerView.Adapter<ActionListViewHolder>() {
         notifyDataSetChanged()
     }
 
-    fun removeAction(action: HomeAction) {
+    fun removeAction(action: HomeAction): Int {
         val index = items.indexOf(action)
         if (index != -1) {
             items.removeAt(index)
             notifyItemRemoved(index)
         }
+        return index
     }
 
     fun currentItems(): List<HomeAction> = items

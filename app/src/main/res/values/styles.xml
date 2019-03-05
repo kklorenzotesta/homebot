@@ -34,9 +34,18 @@
         <item name="android:windowIsFloating">true</item>
         <item name="android:backgroundDimEnabled">false</item>
     </style>
-    
+
     <style name="Preference.ActionsPreferenceStyle">
         <item name="android:layout">@layout/actions_preference_layout</item>
+    </style>
+
+    <style name="Preference.AddActionPreferenceStyle" parent="Preference.DialogPreference.Material">
+        <item name="android:title">@string/add_action_preference_title</item>
+        <item name="android:icon">@drawable/ic_add_black_32dp</item>
+        <item name="allowDividerAbove">true</item>
+        <item name="android:dialogTitle">@string/add_action_dialog_title</item>
+        <item name="android:positiveButtonText">@null</item>
+        <item name="android:negativeButtonText">@string/close_add_action_dialog_button_text</item>
     </style>
 
 </resources>

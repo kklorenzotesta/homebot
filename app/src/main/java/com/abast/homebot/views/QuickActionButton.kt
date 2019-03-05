@@ -33,7 +33,7 @@ abstract class QuickActionButton : View {
     protected var centerY: Float = 0F
     protected var radius: Float = 0F
 
-    private val circlePaint: Paint = Random(Random.nextInt()).let { rnd ->
+    private val circlePaint: Paint = Random(Random.nextInt()).let { _ ->
         Paint(Paint.ANTI_ALIAS_FLAG).apply {
             setARGB(255, 0, 0, 0)
             style = Paint.Style.FILL
