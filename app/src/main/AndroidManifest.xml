@@ -67,8 +67,17 @@
                 android:name=".LicensesActivity"
                 android:label="@string/open_source_licenses">
         </activity>
+        <activity android:name=".settings.EditFolderActivity"/>
 
         <service android:name=".FlashlightService"/>
+        
+        <provider android:authorities="com.abast.homebot" android:name="androidx.core.content.FileProvider"
+                  android:exported="false"
+                  android:grantUriPermissions="true">
+            <meta-data
+                    android:name="android.support.FILE_PROVIDER_PATHS"
+                    android:resource="@xml/sharing_paths" />
+        </provider>
     </application>
 
 </manifest>

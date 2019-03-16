@@ -9,7 +9,8 @@ import com.abast.homebot.R
 import com.abast.homebot.actions.HomeAction
 import java.util.*
 
-class ActionListAdapter(context: Context) : RecyclerView.Adapter<ActionListViewHolder>() {
+class ActionListAdapter(context: Context, val onActionClick: (HomeAction) -> Unit) :
+    RecyclerView.Adapter<ActionListViewHolder>() {
     val touchHelper: ItemTouchHelper by lazy { ActionListTouchHelper(context, this) }
 
     private val items: MutableList<HomeAction> = mutableListOf()
@@ -23,7 +24,12 @@ class ActionListAdapter(context: Context) : RecyclerView.Adapter<ActionListViewH
     }
 
     override fun onBindViewHolder(holder: ActionListViewHolder, position: Int) {
-        holder.bind(items[position])
+        items[position].also { action ->
+            holder.bind(action)
+            holder.itemView.setOnClickListener {
+                onActionClick(action)
+            }
+        }
     }
 
     fun addAction(action: HomeAction, index: Int? = null) {

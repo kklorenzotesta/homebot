@@ -9,4 +9,18 @@
                 app:key="@string/actions_setting_key"
                 app:title="@string/actions_setting_title"/>
     </androidx.preference.PreferenceCategory>
+    <androidx.preference.PreferenceCategory android:title="@string/backup_settings_header"
+                                            app:iconSpaceReserved="false">
+        <Preference
+                android:key="@string/export_settings_preference_key"
+                app:title="@string/export_settings_preference_title"
+                app:summary="@string/export_settings_preference_summary"
+                app:iconSpaceReserved="false"/>
+        <Preference
+                android:key="@string/import_settings_preference_key"
+                app:title="@string/import_settings_preference_title"
+                app:summary="@string/import_settings_preference_summary"
+                app:iconSpaceReserved="false"/>
+    </androidx.preference.PreferenceCategory>
+
 </androidx.preference.PreferenceScreen>

@@ -15,6 +15,7 @@
     <string name="pref_title_lock">Lock phone</string>
     <string name="pref_title_brightness">Toggle brightness</string>
     <string name="pref_title_file">Open a file</string>
+    <string name="pref_title_folder">Folder</string>
 
     <string name="ok">OK</string>
     <string name="cancel">Cancel</string>
@@ -35,6 +36,16 @@
     <string name="actions_setting_key">actions_preference</string>
     <string name="actions_setting_title">Quick actions:</string>
 
+    <string name="backup_settings_header">Backup &amp; Recover</string>
+
+    <string name="export_settings_preference_key">export_settings_key</string>
+    <string name="export_settings_preference_title">Export settings</string>
+    <string name="export_settings_preference_summary">Export all your settings for backup</string>
+
+    <string name="import_settings_preference_key">import_settings_key</string>
+    <string name="import_settings_preference_title">Import settings</string>
+    <string name="import_settings_preference_summary">Import settings for a previous backup</string>
+
     <string name="add_action_preference_key">add_action_key</string>
     <string name="add_action_preference_title">Add quick action</string>
     <string name="action_icon_content_description">Quick action icon</string>
@@ -45,5 +56,9 @@
 
     <string name="add_action_dialog_title">Choose the type of the new action</string>
     <string name="close_add_action_dialog_button_text">Back</string>
+    <string name="export_backup_intent_title">Save settings backup</string>
+
+    <string name="export_settings_error_message">An error occurred while exporting your settings</string>
+    <string name="empty_actions_list_text">No action configured</string>
 
 </resources>

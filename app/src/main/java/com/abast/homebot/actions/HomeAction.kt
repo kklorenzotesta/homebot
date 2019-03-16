@@ -11,7 +11,6 @@ import android.util.Log
 import android.widget.Toast
 import androidx.annotation.StringRes
 import androidx.core.content.ContextCompat
-import androidx.core.content.ContextCompat.startActivity
 import com.abast.homebot.FlashlightService
 import com.abast.homebot.MainActivity
 import com.abast.homebot.R
@@ -19,6 +18,7 @@ import com.fasterxml.jackson.annotation.JsonIgnore
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties
 import com.fasterxml.jackson.annotation.JsonSubTypes
 import com.fasterxml.jackson.annotation.JsonTypeInfo
+import java.io.File
 import java.lang.ref.SoftReference
 import java.net.URISyntaxException
 import kotlin.reflect.KClass
@@ -35,7 +35,8 @@ import kotlin.reflect.KClass
         JsonSubTypes.Type(ToggleBrightness::class),
         JsonSubTypes.Type(OpenRecentApps::class),
         JsonSubTypes.Type(LaunchShortcut::class),
-        JsonSubTypes.Type(ToggleFlashlight::class)
+        JsonSubTypes.Type(ToggleFlashlight::class),
+        JsonSubTypes.Type(Folder::class)
     ]
 )
 @JsonIgnoreProperties(ignoreUnknown = true)
@@ -70,6 +71,7 @@ fun KClass<out HomeAction>.dumbInstance(): HomeAction = when (this) {
     LaunchApp::class -> LaunchApp("")
     LaunchShortcut::class -> LaunchShortcut("", "")
     OpenWeb::class -> OpenWeb("")
+    Folder::class -> Folder("", "", listOf(ToggleFlashlight))
     else -> throw IllegalStateException()
 }
 
@@ -221,4 +223,19 @@ data class OpenWeb(val address: String) : HomeAction() {
 
     override val titleRes: Int
         get() = R.string.pref_title_web
+}
+
+data class Folder(val iconFile: String, val name: String, val actions: List<HomeAction>) : HomeAction() {
+    init {
+        require(actions.isNotEmpty())
+    }
+
+    override val titleRes: Int = R.string.pref_title_folder
+
+    override fun label(context: Context): String = name
+
+    override fun icon(context: Context): Drawable =
+        Drawable.createFromPath(File(context.filesDir, iconFile).absolutePath)!!
+
+    override fun run(context: Context) {}
 }

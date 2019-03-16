@@ -7,7 +7,7 @@
     <declare-styleable name="LaunchActivityActionButton">
         <attr name="targetPackage" format="string"/>
     </declare-styleable>
-    <declare-styleable name="PreferenceActions">
-        <attr name="test" format="string"/>
+    <declare-styleable name="ActionsPreference">
+        <attr name="folder" format="boolean"/>
     </declare-styleable>
 </resources>

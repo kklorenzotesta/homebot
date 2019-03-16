@@ -2,19 +2,37 @@ package com.abast.homebot.settings
 
 import android.app.Activity
 import android.content.Intent
+import android.content.SharedPreferences
 import android.content.pm.ActivityInfo
 import android.os.Bundle
+import android.preference.PreferenceManager
 import android.util.Log
 import android.widget.EditText
 import androidx.appcompat.app.AlertDialog
+import androidx.core.content.FileProvider
 import androidx.preference.Preference
 import androidx.preference.PreferenceFragmentCompat
 import com.abast.homebot.R
 import com.abast.homebot.actions.*
 import com.abast.homebot.pickers.AppPickerActivity
+import com.google.android.material.snackbar.Snackbar
+import java.io.BufferedReader
+import java.io.File
+import java.io.InputStreamReader
+import java.io.PrintWriter
+import java.text.SimpleDateFormat
+import java.util.*
 import kotlin.reflect.KClass
 
 class HomeBotPreferenceFragment : PreferenceFragmentCompat(), AddActionPreference.Listener {
+    companion object {
+        const val IMPORT_SETTINGS_FILE_REQUEST_CODE = 432
+    }
+
+    private val sharedPrefs: SharedPreferences by lazy {
+        PreferenceManager.getDefaultSharedPreferences(context)
+    }
+
     private val appPickerIntent: Intent by lazy {
         Intent(context, AppPickerActivity::class.java).apply {
             putExtra(AppPickerActivity.EXTRA_LABEL, getString(R.string.choose_app))
@@ -30,11 +48,28 @@ class HomeBotPreferenceFragment : PreferenceFragmentCompat(), AddActionPreferenc
     }
 
     private val actionsPreference: ActionsPreference by lazy {
-        findPreference<ActionsPreference>(getString(R.string.actions_setting_key))
+        findPreference<ActionsPreference>(getString(R.string.actions_setting_key))!!
+    }
+
+    private val exportSettingsPreference: Preference by lazy {
+        findPreference<Preference>(getString(R.string.export_settings_preference_key))!!
+    }
+
+    private val importSettingsPreference: Preference by lazy {
+        findPreference<Preference>(getString(R.string.import_settings_preference_key))!!
     }
 
     override fun onCreatePreferences(savedInstanceState: Bundle?, rootKey: String?) {
         addPreferencesFromResource(R.xml.pref_general)
+        actionsPreference.setOnActionClickListener(::onActionClick)
+        exportSettingsPreference.setOnPreferenceClickListener {
+            exportSettings()
+            true
+        }
+        importSettingsPreference.setOnPreferenceClickListener {
+            importSettings()
+            true
+        }
     }
 
     override fun onDisplayPreferenceDialog(preference: Preference) {
@@ -63,7 +98,47 @@ class HomeBotPreferenceFragment : PreferenceFragmentCompat(), AddActionPreferenc
                 AppPickerActivity.REQUEST_CODE_SHORTCUT
             )
             OpenWeb::class -> showWebDialog()
+            Folder::class ->
+                startActivityForResult(
+                    Intent(context, EditFolderActivity::class.java),
+                    EditFolderActivity.NEW_FOLDER_REQUEST_CODE
+                )
+            else -> throw IllegalStateException()
         }
+    }
+
+    private fun exportSettings() {
+        val settings = sharedPrefs.getString(getString(R.string.actions_setting_key), "[]")!!
+        try {
+            val file = buildExportFile()
+            PrintWriter(file).use {
+                it.write(settings)
+            }
+            startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).apply {
+                putExtra(
+                    Intent.EXTRA_STREAM,
+                    FileProvider.getUriForFile(context!!, "com.abast.homebot", file)
+                )
+                type = "text/plain"
+            }, getString(R.string.export_backup_intent_title)))
+        } catch (e: Exception) {
+            Snackbar.make(view!!, R.string.export_settings_error_message, Snackbar.LENGTH_SHORT).show()
+            Log.e("HBK", "Cannot export settings", e)
+        }
+    }
+
+    private fun buildExportFile(): File =
+        File(
+            File(context!!.cacheDir, "/backup/").apply {
+                mkdir()
+            },
+            SimpleDateFormat("yyyy-MM-dd-HH:mm:ss", Locale.getDefault()).format(Date())
+        )
+
+    private fun importSettings() {
+        startActivityForResult(Intent(Intent.ACTION_GET_CONTENT).apply {
+            type = "*/*"
+        }, IMPORT_SETTINGS_FILE_REQUEST_CODE)
     }
 
     /**
@@ -87,7 +162,6 @@ class HomeBotPreferenceFragment : PreferenceFragmentCompat(), AddActionPreferenc
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
-        Log.d("KHB", "outer result")
         if (resultCode == Activity.RESULT_OK) {
             when (requestCode) {
                 AppPickerActivity.REQUEST_CODE_APP -> {
@@ -104,32 +178,26 @@ class HomeBotPreferenceFragment : PreferenceFragmentCompat(), AddActionPreferenc
                     val value = shortcutIntent.toUri(Intent.URI_INTENT_SCHEME)
                     actionsPreference.addAction(LaunchShortcut(value, shortcutName))
                 }
+                HomeBotPreferenceFragment.IMPORT_SETTINGS_FILE_REQUEST_CODE -> {
+                    data?.data?.let { uri ->
+                        val text = BufferedReader(InputStreamReader(context!!.contentResolver.openInputStream(uri))).use {
+                            it.readText()
+                        }
+                        sharedPrefs.edit().putString(getString(R.string.actions_setting_key), text).apply()
+                        actionsPreference.refresh()
+                    }
+                }
             }
         }
     }
 
-    /*override fun onResume() {
-        super.onResume()
-
-        // Check if we have brightness permission
-        val brightnessSwitch = findSwitch(HomeAction.TOGGLE_BRIGHTNESS)
-        if (!Settings.System.canWrite(activity) && brightnessSwitch.isChecked) {
-            brightnessSwitch.isChecked = false
+    private fun onActionClick(action: HomeAction) {
+        if (action is Folder) {
+            startActivityForResult(
+                Intent(context, EditFolderActivity::class.java),
+                EditFolderActivity.EDIT_FOLDER_REQUEST_CODE
+            )
         }
     }
-
-    /**
-     * Opens settings app to enable settings write
-     */
-    private fun askForBrightnessPermission() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            if (!Settings.System.canWrite(activity)) {
-                val intent = Intent(android.provider.Settings.ACTION_MANAGE_WRITE_SETTINGS)
-                intent.data = Uri.parse("package:" + activity!!.packageName)
-                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                startActivity(intent)
-            }
-        }
-    }*/
 
 }
