@@ -32,17 +32,17 @@ class ActionLauncherActivity : AppCompatActivity() {
         launcher_background.setOnClickListener {
             finish()
         }
-        if (actions.size == 1) {
-            actions.first().run(this)
-        } else if (actions.isEmpty()) {
-            launchMainActivity()
-        } else {
-            actions.map {
-                QuickActionButton(this).apply {
-                    setAction(it)
+        when (actions.size) {
+            0 -> launchMainActivity()
+            1 -> actions.first().run(this)
+            else -> {
+                actions.map {
+                    QuickActionButton(this).apply {
+                        setAction(it)
+                    }
+                }.also {
+                    launcher_background.setButtons(it)
                 }
-            }.also {
-                launcher_background.setButtons(it)
             }
         }
     }

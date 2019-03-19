@@ -4,6 +4,7 @@ import android.animation.ObjectAnimator
 import android.content.Context
 import android.graphics.Color
 import android.graphics.Path
+import android.graphics.Rect
 import android.graphics.Typeface
 import android.util.AttributeSet
 import android.util.Log
@@ -27,7 +28,9 @@ class LauncherLayout(context: Context, attrs: AttributeSet) : FrameLayout(contex
         typeface = Typeface.DEFAULT_BOLD
         visibility = View.VISIBLE
     }
-    private var isOnHold: View? = null
+    private var spreadingAround: View? = null
+    private var childrenRadius: Int = 0
+    private var childrenPositions: List<Pair<Int, Int>> = emptyList()
 
     init {
         setButtons(emptyList())
@@ -38,50 +41,101 @@ class LauncherLayout(context: Context, attrs: AttributeSet) : FrameLayout(contex
         addView(ellipse)
         addView(label)
         buttons.forEach { button ->
-            button.setOnLongClickListener {
-                label.text = button.getLabel()
-                isOnHold = it
-                invalidate()
-                requestLayout()
-                true
-            }
-            button.setOnTouchListener { _, event ->
-                if (event.action == MotionEvent.ACTION_UP) {
-                    if (isOnHold != null) {
-                        isOnHold = null
-                        invalidate()
-                        requestLayout()
-                        true
-                    } else {
-                        false
-                    }
-                } else {
-                    false
-                }
-            }
             addView(button)
         }
     }
 
+    override fun onInterceptTouchEvent(ev: MotionEvent): Boolean {
+        return true
+    }
+
+    override fun onTouchEvent(event: MotionEvent): Boolean {
+        fun triggerSpread() {
+            buttons().zip(childrenPositions.indices).filter { it.first != spreadingAround }.find { (_, index) ->
+                val position = childrenPositions[index]
+                (event.x >= position.first && event.x <= (position.first + childrenRadius * 2)) && (
+                        childrenPositions.lastIndex == index || event.x <= childrenPositions[index + 1].first
+                        )
+            }?.let { (button, _) ->
+                spreadingAround = button
+                label.text = button.getLabel()
+                invalidate()
+                requestLayout()
+            }
+        }
+        when (event.action) {
+            MotionEvent.ACTION_UP -> {
+                val around = spreadingAround
+                if (around != null) {
+                    val rect = Rect()
+                    around.getGlobalVisibleRect(rect)
+                    if (rect.contains(event.x.toInt(), event.y.toInt())
+                        || ellipse.ellipseContains(event.x.toInt(), event.y.toInt())
+                    ) {
+                        around.performClick()
+                    } else {
+                        spreadingAround = null
+                        invalidate()
+                        requestLayout()
+                    }
+                }
+            }
+            MotionEvent.ACTION_DOWN -> if (spreadingAround == null) {
+                val rect = Rect()
+                if (ellipse.ellipseContains(event.x.roundToInt(), event.y.roundToInt()) ||
+                    buttons().any {
+                        it.getGlobalVisibleRect(rect)
+                        rect.contains(event.x.toInt(), event.y.toInt())
+                    }
+                ) {
+                    triggerSpread()
+                }
+            }
+            MotionEvent.ACTION_MOVE ->
+                if (spreadingAround != null) {
+                    triggerSpread()
+                }
+        }
+        super.onTouchEvent(event)
+        return true
+    }
+
     override fun onLayout(changed: Boolean, left: Int, top: Int, right: Int, bottom: Int) {
         ellipse.layout(0, 0, measuredWidth, measuredHeight)
-        val singleChildRadius = (children.lastOrNull()?.measuredWidth ?: 0) / 2
+        val buttons = buttons()
+        childrenRadius = buttons.first().measuredWidth / 2
+        val availableWidth = (measuredWidth - (2 * elementsMargin))
+        var availableSpace = availableWidth / buttons.size
+        val singleChildWidth = children.lastOrNull()?.measuredWidth ?: 0
+        if (singleChildWidth > availableSpace) {
+            availableSpace = (availableWidth - singleChildWidth) / (buttons.size - 1)
+        }
+        val positions: MutableList<Pair<Int, Int>> = mutableListOf()
+        buttons.fold(elementsMargin) { acc, view ->
+            val startingX =
+                acc + if (availableSpace > view.measuredWidth) (availableSpace - view.measuredWidth) / 2 else 0
+            val startingY =
+                ellipse.getPositiveY(startingX + (view.measuredWidth / 2) - (measuredWidth / 2)) - (view.measuredHeight / 2)
+            positions.add(Pair(startingX, startingY))
+            acc + availableSpace
+        }
+        childrenPositions = positions
         val centerX = (measuredWidth / 2)
         val centerY = ellipse.getPositiveY(centerX - (measuredWidth / 2))
-        children.filter { it is QuickActionButton }.forEach { button ->
+        buttons.forEach { button ->
             button.layout(
-                centerX - singleChildRadius,
-                centerY - singleChildRadius,
-                centerX + singleChildRadius,
-                centerY + singleChildRadius
+                centerX - childrenRadius,
+                centerY - childrenRadius,
+                centerX + childrenRadius,
+                centerY + childrenRadius
             )
         }
-        val holding = isOnHold
-        if (children.filter { it is QuickActionButton }.count() > 0) {
-            if (holding == null) {
+        val holdedButton = spreadingAround
+        if (buttons.count() > 0) {
+            if (holdedButton == null) {
                 resetButtonsPosition()
             } else {
-                spreadButtonsAround(holding)
+                spreadButtonsAround(holdedButton)
             }
         }
         Log.d("HB", "onLayout")
@@ -92,7 +146,7 @@ class LauncherLayout(context: Context, attrs: AttributeSet) : FrameLayout(contex
         val h = MeasureSpec.getSize(heightMeasureSpec)
         elementsMargin = if (h > w) w / 20 else w / 10
         val cw = MeasureSpec.makeMeasureSpec(dpToPixel(buttonsSizeDp), MeasureSpec.EXACTLY)
-        children.filter { it is QuickActionButton }.forEach {
+        buttons().forEach {
             measureChild(it, cw, cw)
         }
         measureChild(ellipse, widthMeasureSpec, heightMeasureSpec)
@@ -105,20 +159,20 @@ class LauncherLayout(context: Context, attrs: AttributeSet) : FrameLayout(contex
     }
 
     private fun spreadButtonsAround(child: View) {
-        var labelStartX = ((child.x + (child.measuredWidth / 2)) - (label.measuredWidth / 2)).roundToInt()
-        Log.d("HB", "label width: ${label.measuredWidth}")
+        val buttons = buttons()
+        val index = buttons.indexOf(child)
+        val childPos = childrenPositions[index]
+        var labelStartX = ((childPos.first + (child.measuredWidth / 2)) - (label.measuredWidth / 2))
         if (labelStartX < elementsMargin) {
             labelStartX = elementsMargin
         } else if ((labelStartX + label.measuredWidth) > (measuredWidth - elementsMargin)) {
             labelStartX = (measuredWidth - elementsMargin) - label.measuredWidth
         }
-        val labelStartY = (child.y - label.measuredHeight).roundToInt()
+        val labelStartY = (childPos.second - label.measuredHeight)
         label.layout(labelStartX, labelStartY, labelStartX + label.measuredWidth, labelStartY + label.measuredHeight)
-        val buttons = children.filter { it is QuickActionButton }.map { it as QuickActionButton }.toList()
-        val index = buttons.indexOf(child)
         val singleChildWidth = buttons.lastOrNull()?.measuredWidth ?: 0
-        val spaceBefore = (child.x - elementsMargin).roundToInt()
-        val spaceAfter = ((measuredWidth - (child.x + child.measuredWidth)) - elementsMargin).roundToInt()
+        val spaceBefore = (childPos.first - elementsMargin)
+        val spaceAfter = ((measuredWidth - (childPos.first + child.measuredWidth)) - elementsMargin)
         var availableSpaceLeftPerButton = if (index > 0) (spaceBefore / index) else 0
         var availableSpaceRightPerButton =
             if (((buttons.size - index) - 1) > 0) spaceAfter / ((buttons.size - index) - 1) else 0
@@ -128,12 +182,19 @@ class LauncherLayout(context: Context, attrs: AttributeSet) : FrameLayout(contex
         if (singleChildWidth > availableSpaceRightPerButton && ((buttons.size - index) - 1) > 1 && spaceAfter > singleChildWidth) {
             availableSpaceRightPerButton = (spaceAfter - singleChildWidth) / ((buttons.size - index) - 2)
         }
-        (0 until index).reversed().map { buttons[it] }
-            .fold(child.x.roundToInt()) { acc, view ->
+        ObjectAnimator.ofFloat(child, View.X, View.Y, Path().apply {
+            moveTo(child.x, child.y)
+            lineTo(childPos.first.toFloat(), childPos.second.toFloat())
+        }).apply {
+            duration = 300
+            start()
+        }
+        (0 until index).reversed().map { Pair(buttons[it], it) }
+            .fold(childPos.first) { acc, (view, pos) ->
                 val startingX =
                     (acc - if (availableSpaceLeftPerButton > view.measuredWidth) (availableSpaceLeftPerButton - view.measuredWidth) / 2 else 0) -
                             view.measuredWidth
-                if (startingX < view.x) {
+                if (startingX <= childrenPositions[pos].first) {
                     val startingY =
                         ellipse.getPositiveY(startingX + (view.measuredWidth / 2) - (measuredWidth / 2)) - (view.measuredHeight / 2)
                     ObjectAnimator.ofFloat(view, View.X, View.Y, Path().apply {
@@ -146,11 +207,11 @@ class LauncherLayout(context: Context, attrs: AttributeSet) : FrameLayout(contex
                 }
                 acc - availableSpaceLeftPerButton
             }
-        ((index + 1) until buttons.size).map { buttons[it] }
-            .fold((child.x + child.measuredWidth).roundToInt()) { acc, view ->
+        ((index + 1) until buttons.size).map { Pair(buttons[it], it) }
+            .fold(childPos.first + child.measuredWidth) { acc, (view, pos) ->
                 val startingX =
                     acc + if (availableSpaceRightPerButton > view.measuredWidth) (availableSpaceRightPerButton - view.measuredWidth) / 2 else 0
-                if (startingX > view.x) {
+                if (startingX >= childrenPositions[pos].first) {
                     val startingY =
                         ellipse.getPositiveY(startingX + (view.measuredWidth / 2) - (measuredWidth / 2)) - (view.measuredHeight / 2)
                     ObjectAnimator.ofFloat(view, View.X, View.Y, Path().apply {
@@ -165,28 +226,19 @@ class LauncherLayout(context: Context, attrs: AttributeSet) : FrameLayout(contex
             }
     }
 
+    private fun buttons(): List<QuickActionButton> =
+        children.filter { it is QuickActionButton }.map { it as QuickActionButton }.toList()
+
     private fun resetButtonsPosition() {
         label.layout(0, 0, 0, 0)
-        val buttons = children.filter { it is QuickActionButton }.toList()
-        val availableWidth = (measuredWidth - (2 * elementsMargin))
-        var availableSpace = availableWidth / buttons.size
-        val singleChildWidth = children.lastOrNull()?.measuredWidth ?: 0
-        if (singleChildWidth > availableSpace) {
-            availableSpace = (availableWidth - singleChildWidth) / (buttons.size - 1)
-        }
-        buttons.fold(elementsMargin) { acc, view ->
-            val startingX =
-                acc + if (availableSpace > view.measuredWidth) (availableSpace - view.measuredWidth) / 2 else 0
-            val startingY =
-                ellipse.getPositiveY(startingX + (view.measuredWidth / 2) - (measuredWidth / 2)) - (view.measuredHeight / 2)
+        buttons().zip(childrenPositions).forEach { (view, p) ->
             ObjectAnimator.ofFloat(view, View.X, View.Y, Path().apply {
                 moveTo(view.x, view.y)
-                lineTo(startingX.toFloat(), startingY.toFloat())
+                lineTo(p.first.toFloat(), p.second.toFloat())
             }).apply {
                 duration = 300
                 start()
             }
-            acc + availableSpace
         }
     }
 

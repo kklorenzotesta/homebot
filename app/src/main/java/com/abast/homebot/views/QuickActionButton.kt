@@ -71,6 +71,8 @@ class QuickActionButton : View {
         requestLayout()
     }
 
+    fun getAction(): HomeAction? = this.action
+
     fun getLabel(): String = action?.label(context) ?: ""
 
     private fun dpToPixel(dp: Int): Int =

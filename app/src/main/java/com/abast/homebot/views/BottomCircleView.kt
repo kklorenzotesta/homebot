@@ -6,6 +6,7 @@ import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.RectF
 import android.util.AttributeSet
+import android.util.Log
 import android.view.View
 import kotlin.math.min
 import kotlin.math.pow
@@ -49,6 +50,8 @@ class BottomCircleView(context: Context, attrs: AttributeSet? = null) : View(con
         canvas.drawArc(mRectF, 180F, 180F, true, circlePaint)
         canvas.drawRect(bottomRect, circlePaint)
     }
+
+    fun ellipseContains(x: Int, y: Int): Boolean = y >= getPositiveY(x - (measuredWidth / 2))
 
     fun getPositiveY(x: Int): Int =
         (((mRectF.height() / 2.0) - (((mRectF.height() / 2.0) / (mRectF.width() / 2.0)) * sqrt(
