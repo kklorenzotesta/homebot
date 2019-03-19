@@ -177,6 +177,7 @@ data class LaunchApp(val uri: String) : HomeAction() {
             }
             activity.finish()
             activity.startActivity(shortcut)
+            activity.overridePendingTransition(R.anim.abc_slide_in_top, R.anim.abc_slide_out_top)
         } catch (e: URISyntaxException) {
             e.printStackTrace()
             launchMainActivity(context)
