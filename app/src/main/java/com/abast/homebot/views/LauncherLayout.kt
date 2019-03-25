@@ -63,38 +63,37 @@ class LauncherLayout(context: Context, attrs: AttributeSet) : FrameLayout(contex
                 requestLayout()
             }
         }
+
+        fun triggerIfInArea() {
+            val rect = Rect()
+            if (ellipse.ellipseContains(event.x.roundToInt(), event.y.roundToInt()) ||
+                buttons().any {
+                    it.getGlobalVisibleRect(rect)
+                    rect.contains(event.x.toInt(), event.y.toInt())
+                }
+            ) {
+                triggerSpread()
+            } else if (spreadingAround != null) {
+                spreadingAround = null
+                invalidate()
+                requestLayout()
+            }
+        }
         when (event.action) {
             MotionEvent.ACTION_UP -> {
                 val around = spreadingAround
                 if (around != null) {
-                    val rect = Rect()
-                    around.getGlobalVisibleRect(rect)
-                    if (rect.contains(event.x.toInt(), event.y.toInt())
-                        || ellipse.ellipseContains(event.x.toInt(), event.y.toInt())
-                    ) {
-                        around.performClick()
-                    } else {
-                        spreadingAround = null
-                        invalidate()
-                        requestLayout()
-                    }
+                    around.performClick()
+                } else {
+                    spreadingAround = null
+                    invalidate()
+                    requestLayout()
                 }
             }
             MotionEvent.ACTION_DOWN -> if (spreadingAround == null) {
-                val rect = Rect()
-                if (ellipse.ellipseContains(event.x.roundToInt(), event.y.roundToInt()) ||
-                    buttons().any {
-                        it.getGlobalVisibleRect(rect)
-                        rect.contains(event.x.toInt(), event.y.toInt())
-                    }
-                ) {
-                    triggerSpread()
-                }
+                triggerIfInArea()
             }
-            MotionEvent.ACTION_MOVE ->
-                if (spreadingAround != null) {
-                    triggerSpread()
-                }
+            MotionEvent.ACTION_MOVE -> triggerIfInArea()
         }
         super.onTouchEvent(event)
         return true
